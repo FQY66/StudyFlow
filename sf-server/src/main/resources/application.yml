@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+  main:
+    allow-circular-references: true
+  servlet:
+    multipart:
+      max-file-size: ${spring.servlet.multipart.max-file-size}
+      max-request-size: ${spring.servlet.multipart.max-request-size}
+  datasource:
+    druid:
+      driver-class-name: ${sf.datasource.driver-class-name}
+      url: ${sf.datasource.url}
+      username: ${sf.datasource.username}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
