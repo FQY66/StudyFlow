@@ -17,18 +17,17 @@
 
     <modules>
         <module>sf-common</module>
-        <module>sf-info</module>
-        <module>sf-interaction</module>
+
         <module>sf-pojo</module>
-        <module>sf-project</module>
+
         <module>sf-server</module>
-        <module>sf-user</module>
+
     </modules>
 
     <properties>
         <java.version>17</java.version>
         <lombok>1.18.42</lombok>
-        <mybatis.spring>2.2.0</mybatis.spring>
+        <mybatis.spring>3.0.3</mybatis.spring>
         <druid>1.2.1</druid>
     </properties>
 
@@ -40,17 +39,20 @@
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis.spring}</version>
             </dependency>
+
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok}</version>
             </dependency>
+
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>druid-spring-boot-starter</artifactId>
                 <version>${druid}</version>
             </dependency>
         </dependencies>
+
     </dependencyManagement>
 <!--    <build>-->
 <!--        <plugins>-->

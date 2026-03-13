@@ -11,12 +11,39 @@ spring:
       max-file-size: ${spring.servlet.multipart.max-file-size}
       max-request-size: ${spring.servlet.multipart.max-request-size}
   datasource:
+    driver-class-name: ${sf.datasource.driver-class-name}
+    url: ${sf.datasource.url}
+    username: ${sf.datasource.username}
+    password: ${sf.datasource.password}
+    type: com.alibaba.druid.pool.DruidDataSource
+    # Druid 特有配置
     druid:
-      driver-class-name: ${sf.datasource.driver-class-name}
-      url: ${sf.datasource.url}
-      username: ${sf.datasource.username}
+      # 连接池配置
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1 FROM DUAL
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
 
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin
+        reset-enable: false
+
+      # 过滤器配置
+      filters: stat,wall,log4j
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.sf.entity
 
