@@ -65,7 +65,7 @@
         <el-form :model="form" label-position="top" class="login-form">
           <el-form-item label="个人账号" prop="email">
             <el-input
-              v-model="form.email"
+              v-model="form.user"
               placeholder="账号"
               autocomplete="email"
             />
@@ -111,7 +111,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const form = reactive({
-  email: '',
+  user: '',
   password: '',
   remember: false,
 })

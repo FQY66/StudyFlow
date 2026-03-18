@@ -46,4 +46,9 @@ mybatis:
     map-underscore-to-camel-case: true
   mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.sf.entity
-
+sf:
+  jwt:
+    # 管理员密钥
+    admin-secret-key: fqy
+    # 过期时间3天
+    admin-ttl: 259200000

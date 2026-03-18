@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @SpringBootApplication
 @EnableTransactionManagement
 @Slf4j
+@MapperScan("com.sf.mapper")
 public class StudyFlowApplication {
     public static void main(String[] args) {
         SpringApplication.run(StudyFlowApplication.class, args);

@@ -19,6 +19,8 @@ public class User implements Serializable{
     private String username;
     /** 密码（建议存储加密后的密文） */
     private String password;
+    /** 姓名 */
+    private String name;
     /** 性别 */
     private String sex;
     /** 邮箱 */

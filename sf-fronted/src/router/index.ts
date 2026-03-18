@@ -15,7 +15,7 @@ import ArticleDetail from '@/pages/projects/ArticleDetail.vue'
 
 const routes = [
   {path: '/login', component: Login},
-  { path: '/register', component: Register },
+  {path: '/register', component: Register },
   {
     path: '/',
     component: MainLayout,
