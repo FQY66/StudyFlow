@@ -1,4 +1,5 @@
 import { createWebHashHistory, createRouter } from 'vue-router'
+import axios from 'axios'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Index from '@/pages/index.vue'
 import NotFound from '@/pages/common/NotFound.vue'
@@ -14,8 +15,8 @@ import Register from '@/pages/login/Register.vue'
 import ArticleDetail from '@/pages/projects/ArticleDetail.vue'
 
 const routes = [
-  {path: '/login', component: Login},
-  {path: '/register', component: Register },
+  { path: '/login', component: Login },
+  { path: '/register', component: Register },
   {
     path: '/',
     component: MainLayout,
@@ -28,7 +29,7 @@ const routes = [
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },
       { path: 'projects/courses/:id', component: CoursesDetail },
-      { path: 'projects/courses/article/:id', component: ArticleDetail },
+      { path: 'projects/courses/article/:id', component: ArticleDetail }
     ]
   },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
@@ -37,6 +38,39 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes
+})
+
+router.beforeEach(async (to) => {
+  // 登录页和注册页允许直接访问
+  if (to.path === '/login' || to.path === '/register') {
+    return true
+  }
+
+  // 1. 从本地存储读取 token，判断是否已登录
+  const token = localStorage.getItem('token')
+  if (!token) {
+    return '/login'
+  }
+
+  // 2. 调用后端校验接口，确认 token 是否有效
+  try {
+    const response = await axios.get('http://localhost:8080/admin/check', {
+      headers: {
+        // 后端配置的 token 请求头名为 token
+        token
+      }
+    })
+
+    if (response.data?.code !== 1) {
+      localStorage.removeItem('token')
+      return '/login'
+    }
+    return true
+  } catch (error) {
+    // 校验接口异常时，视为未登录
+    localStorage.removeItem('token')
+    return '/login'
+  }
 })
 
 export default router

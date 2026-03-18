@@ -1,6 +1,5 @@
 server:
   port: 8080
-
 spring:
   profiles:
     active: dev
@@ -52,3 +51,4 @@ sf:
     admin-secret-key: fqy
     # 过期时间3天
     admin-ttl: 259200000
+    admin-token-name: token

@@ -66,7 +66,7 @@
           <el-form-item label="个人账号" prop="email">
             <el-input
               v-model="form.user"
-              placeholder="账号"
+              placeholder="输入你的账号"
               autocomplete="email"
             />
           </el-form-item>
@@ -74,7 +74,7 @@
           <el-form-item label="密码" prop="password">
             <el-input
               v-model="form.password"
-              placeholder="••••••••"
+              placeholder="请输入密码"
               show-password
               autocomplete="current-password"
             />
@@ -105,8 +105,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -118,17 +120,53 @@ const form = reactive({
 
 const loading = ref(false)
 
-function onLogin() {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-    router.push('/')
-  }, 800)
-}
+onMounted(() => {
+  const username = localStorage.getItem('username')
+  if(username){
+    form.user = username
+  }
+})
 
-function onLoginWithGoogle() {
-  // Placeholder for OAuth logic
-  router.push('/')
+async function onLogin() {
+  if (!form.user || !form.password) {
+    ElMessage.warning('请输入账号和密码')
+    return
+  }
+  if(form.remember){
+    localStorage.setItem('username', form.user)
+  }
+  loading.value = true
+  try {
+    // 1. 调用后端登录接口
+    const response = await axios.post('http://localhost:8080/admin/login', {
+      // 后端要求的字段名是 username / password
+      username: form.user,
+      password: form.password,
+    })
+
+    // 2. 判断后端返回是否成功（Result.code === 1 表示成功）
+    if (response.data?.code !== 1) {
+      ElMessage.error(response.data?.msg || '登录失败')
+      return
+    }
+
+    // 3. 取出 token 并存到本地（路由守卫会用它判断是否登录）
+    const token = response.data?.data?.token
+    if (!token) {
+      ElMessage.error('登录成功，但未获取到 token')
+      return
+    }
+
+    localStorage.setItem('token', token)
+    ElMessage.success('登录成功')
+
+    // 4. 跳转到首页
+    router.push('/')
+  } catch (error) {
+    ElMessage.error('登录接口请求失败，请检查后端服务是否已启动')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

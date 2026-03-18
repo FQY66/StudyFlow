@@ -4,7 +4,7 @@ import 'element-plus/dist/index.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import 'virtual:windi.css'
-import router from './router'
+import router from './router/router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 const app = createApp(App)
