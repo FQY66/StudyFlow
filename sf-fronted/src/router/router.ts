@@ -1,5 +1,6 @@
 import { createWebHashHistory, createRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '@/config/api'
 import MainLayout from '@/layouts/MainLayout.vue'
 import Index from '@/pages/index.vue'
 import NotFound from '@/pages/common/NotFound.vue'
@@ -54,7 +55,7 @@ router.beforeEach(async (to) => {
 
   // 2. 调用后端校验接口，确认 token 是否有效
   try {
-    const response = await axios.get('http://localhost:8080/admin/check', {
+    const response = await axios.get(`${API_BASE_URL}/admin/check`, {
       headers: {
         // 后端配置的 token 请求头名为 token
         token

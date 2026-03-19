@@ -9,6 +9,7 @@ interface UserRow {
   phone: string
   status: '正常' | '禁用' | '未激活'
   createTime: string
+  role: '管理员' | '教师' | '学生'
 }
 
 const searchForm = ref({
@@ -25,7 +26,8 @@ const tableData = ref<UserRow[]>([
     gender: '男',
     phone: '18300000001',
     status: '正常',
-    createTime: '2008-11-07 07:37:12'
+    createTime: '2008-11-07 07:37:12',
+    role: '管理员'
   },
   {
     id: 2,
@@ -34,7 +36,18 @@ const tableData = ref<UserRow[]>([
     gender: '男',
     phone: '18300000002',
     status: '禁用',
-    createTime: '2011-08-07 08:36:33'
+    createTime: '2011-08-07 08:36:33',
+    role: '教师'
+  },
+  {
+    id: 3,
+    avatar: 'https://via.placeholder.com/40',
+    name: 'Tom',
+    gender: '男',
+    phone: '18300000003',
+    status: '正常',
+    createTime: '2014-05-07 09:37:12',
+    role: '学生'
   }
 ])
 
@@ -147,10 +160,10 @@ const handleSizeChange = (size: number) => {
         <el-table-column label="用户" min-width="200">
           <template #default="{ row }">
             <div class="user-cell">
-              <el-avatar :src="row.avatar" size="small" />
+              <el-avatar :src="row.avatar" size="large" />
               <div class="user-info">
                 <div class="user-name">{{ row.name }}</div>
-                <div class="user-phone">{{ row.phone }}</div>
+                <div class="user-role">{{ row.role }}</div>
               </div>
             </div>
           </template>
@@ -263,7 +276,7 @@ const handleSizeChange = (size: number) => {
   font-weight: 500;
 }
 
-.user-phone {
+.user-role {
   font-size: 12px;
   color: #909399;
 }

@@ -21,23 +21,27 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    //账号登录
     @PostMapping("/login")
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
-        log.info("管理员登录: {}", userLoginDTO);
+        log.info("角色登录: {}", userLoginDTO);
         UserLoginVO userLoginVO = userService.login(userLoginDTO);
         return Result.success(userLoginVO);
     }
 
+    // 账号注册
     @PostMapping("/register")
     public Result register(@RequestBody UserLoginDTO userLoginDTO){
-        log.info("管理员注册: {}", userLoginDTO);
+        log.info("角色注册: {}", userLoginDTO);
         userService.register(userLoginDTO);
         return Result.success();
     }
 
+    // token验证通过
     @GetMapping("/check")
     public Result checkToken() {
-        // 走到这里说明 JWT 拦截器校验通过
         return Result.success();
     }
+
 }

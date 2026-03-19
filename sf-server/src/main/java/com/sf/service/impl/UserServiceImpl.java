@@ -94,7 +94,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException(MessageConstant.USERNAME_EXISTS);
         }
         //3、对密码进行MD5加密
-        password = DigestUtils.md5DigestAsHex(password.getBytes());
+        String MD5pwd = DigestUtils.md5DigestAsHex(password.getBytes());
         //4、创建新用户实体
 //        User user = new User();
 //        user.setUsername(username);
@@ -104,9 +104,10 @@ public class UserServiceImpl implements UserService {
         User user = User.builder()
                         .username(username)
                         .name(name)
-                        .password(password)
+                        .password(MD5pwd)
                         .status(StatusConstant.ENABLE)
                         .sex("男")
+                        .role(userLoginDTO.getRole())
                         .avatar("static/avatar/defaultAvatar.png")
                         .build();
         //5、插入数据库

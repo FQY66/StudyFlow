@@ -9,13 +9,20 @@
           <el-input v-model="form.email" placeholder="账号" autocomplete="email" />
         </el-form-item>
         <el-form-item label="密码">
-          <el-input v-model="form.password" placeholder="••••••••" show-password autocomplete="new-password" />
+          <el-input v-model="form.password" placeholder="请输入你的密码" show-password autocomplete="new-password" />
         </el-form-item>
         <el-form-item label="确认密码">
-          <el-input v-model="form.confirm" placeholder="••••••••" show-password autocomplete="new-password" />
+          <el-input v-model="form.confirm" placeholder="请确认你的密码" show-password autocomplete="new-password" />
+        </el-form-item>
+        <el-form-item label="身份">
+          <el-select v-model="form.role" placeholder="请选择身份">
+            <el-option label="学生" value="学生" />
+            <el-option label="教师" value="教师" />
+            <el-option label="管理员" value="管理员" />
+          </el-select>
         </el-form-item>
 
-        <el-button type="primary" class="submit" round @click="onSubmit" :loading="loading" style="width: 100%;">
+        <el-button type="primary" class="submit" round @click="register" :loading="loading" style="width: 100%;">
             注册
         </el-button>
 
@@ -31,6 +38,9 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { API_BASE_URL } from '@/config/api'
 
 const router = useRouter()
 
@@ -38,16 +48,49 @@ const form = reactive({
   email: '',
   password: '',
   confirm: '',
+  role: '',
 })
 
 const loading = ref(false)
 
-function onSubmit() {
+async function register() {
+  if (!form.email || !form.password) {
+    ElMessage.warning('请输入账号和密码')
+    return
+  }
+
+  if (form.password !== form.confirm) {
+    ElMessage.warning('两次密码不一致')
+    return
+  }
+
+  if (!form.role) {
+    ElMessage.warning('请选择身份')
+    return
+  }
+
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
+  try {
+    // 1. 调用后端注册接口
+    const response = await axios.post(`${API_BASE_URL}/admin/register`, {
+      username: form.email,
+      password: form.password,
+      role: form.role
+    })
+
+    // 2. 判断是否注册成功
+    if (response.data?.code !== 1) {
+      ElMessage.error(response.data?.msg || '注册失败')
+      return
+    }
+
+    ElMessage.success('注册成功，请登录')
     router.push('/login')
-  }, 800)
+  } catch (error) {
+    ElMessage.error('注册接口请求失败，请检查后端服务是否已启动')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

@@ -109,6 +109,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { API_BASE_URL } from '@/config/api'
 
 const router = useRouter()
 
@@ -138,7 +139,7 @@ async function onLogin() {
   loading.value = true
   try {
     // 1. 调用后端登录接口
-    const response = await axios.post('http://localhost:8080/admin/login', {
+    const response = await axios.post(`${API_BASE_URL}/admin/login`, {
       // 后端要求的字段名是 username / password
       username: form.user,
       password: form.password,
