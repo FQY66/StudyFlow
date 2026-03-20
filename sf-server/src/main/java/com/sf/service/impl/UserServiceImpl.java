@@ -1,27 +1,34 @@
 package com.sf.service.impl;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.sf.constant.JwtClaimsConstant;
 import com.sf.constant.MessageConstant;
+import com.sf.constant.ResourceConstant;
 import com.sf.constant.StatusConstant;
+import com.sf.dto.UserDTO;
 import com.sf.exception.AccountLockedException;
 import com.sf.exception.AccountNotFoundException;
 import com.sf.exception.PasswordErrorException;
 import com.sf.mapper.UserMapper;
 import com.sf.properties.JwtProperties;
-import com.sf.result.Result;
+import com.sf.result.PageResult;
 import com.sf.service.UserService;
 import com.sf.utils.JwtUtil;
-import dto.UserLoginDTO;
-import entity.User;
+import com.sf.dto.UserLoginDTO;
+import com.sf.dto.UserPageQueryDTO;
+import com.sf.entity.User;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
-import vo.UserLoginVO;
+import com.sf.vo.UserVO;
 
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 @Slf4j
@@ -31,8 +38,9 @@ public class UserServiceImpl implements UserService {
     private UserMapper userMapper;
     @Autowired
     private JwtProperties jwtProperties;
+
     @Override
-    public UserLoginVO login(UserLoginDTO userLoginDTO) {
+    public UserVO login(UserLoginDTO userLoginDTO) {
         String username = userLoginDTO.getUsername();
         String password = userLoginDTO.getPassword();
 
@@ -68,7 +76,7 @@ public class UserServiceImpl implements UserService {
                 claims);
         log.info("生成的JWT令牌：" + token);
         //3、返回实体对象
-        return UserLoginVO.builder()
+        return UserVO.builder()
                 .id(user.getId())
                 .token(token)
                 .username(username)
@@ -95,6 +103,8 @@ public class UserServiceImpl implements UserService {
         }
         //3、对密码进行MD5加密
         String MD5pwd = DigestUtils.md5DigestAsHex(password.getBytes());
+        int randomInt = new Random().nextInt(10);
+        String avatar = ResourceConstant.DEFAULT_AVATAR + "defaultAvatar" + randomInt + ".png";
         //4、创建新用户实体
 //        User user = new User();
 //        user.setUsername(username);
@@ -107,10 +117,38 @@ public class UserServiceImpl implements UserService {
                         .password(MD5pwd)
                         .status(StatusConstant.ENABLE)
                         .sex("男")
+                        .email("12345678@qq.com")
+                        .phone("13800000000")
                         .role(userLoginDTO.getRole())
-                        .avatar("static/avatar/defaultAvatar.png")
+                        .avatar(avatar)
                         .build();
         //5、插入数据库
         userMapper.insert(user);
     }
+
+    @Override
+    public PageResult pageQuery(UserPageQueryDTO userPageQueryDTO) {
+        PageHelper.startPage(userPageQueryDTO.getPage(), userPageQueryDTO.getPageSize());
+        Page<User> page = userMapper.pageQuery(userPageQueryDTO);
+        return new PageResult(page.getTotal(), page.getResult());
+    }
+
+    @Override
+    public void update(UserDTO userDTO) {
+        User user = new User();
+        BeanUtils.copyProperties(userDTO, user);
+        // 密码加密
+        if(user.getPassword()!=null){
+            user.setPassword(DigestUtils.md5DigestAsHex(user.getPassword().getBytes()));
+        }
+        log.info("更新用户信息，当前用户：{}", user);
+        userMapper.update(user);
+    }
+
+    @Override
+    public void delete(int id) {
+        userMapper.delete(id);
+        log.info("删除用户: {}", id);
+    }
+
 }

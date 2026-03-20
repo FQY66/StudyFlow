@@ -1,4 +1,4 @@
-package vo;
+package com.sf.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,7 +12,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 // 管理员登录VO
-public class UserLoginVO implements Serializable {
+public class UserVO implements Serializable {
     // 管理员ID
     private Long id;
     // 管理员登录令牌

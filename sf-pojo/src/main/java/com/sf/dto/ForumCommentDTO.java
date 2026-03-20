@@ -1,29 +1,29 @@
-package entity;
+package com.sf.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ForumComment implements Serializable {
-    /** 主键ID */
+public class ForumCommentDTO {
+
+    /** 评论ID */
     private Long id;
 
     /** 所属帖子ID */
     private Long postId;
+
+    /** 评论人名称 */
+    private String authorName;
+
     /** 评论内容 */
     private String content;
-    /** 评论人ID */
-    private Long authorId;
 
-    /** 创建时间 */
-    private LocalDateTime createTime;
+    /** 创建时间字符串，例如 2024-09-03 11:20 */
+    private String createdAt;
 }
 

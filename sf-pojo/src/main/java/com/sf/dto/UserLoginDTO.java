@@ -1,4 +1,4 @@
-package dto;
+package com.sf.dto;
 
 import lombok.Data;
 

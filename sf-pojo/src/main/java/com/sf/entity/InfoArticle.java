@@ -1,4 +1,4 @@
-package entity;
+package com.sf.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,22 +12,21 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ForumPost implements Serializable {
+public class InfoArticle implements Serializable {
     /** 主键ID */
     private Long id;
 
-    /** 帖子标题 */
+    /** 文章标题 */
     private String title;
-    /** 帖子内容 */
+    /** 文章分类 */
+    private String category;
+    /** 文章内容 */
     private String content;
-    /** 标签（可用逗号分隔） */
-    private String tags;
+    /** 封面URL */
+    private String cover;
 
-    /** 发帖人ID */
-    private Long authorId;
-
-    /** 点赞数 */
-    private Integer likeCount;
+    /** 发布人ID */
+    private Long publisherId;
 
     /**
      * 审核状态：PENDING（待审核）/ APPROVED（已通过）/ REJECTED（已拒绝）

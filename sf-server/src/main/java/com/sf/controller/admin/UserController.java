@@ -1,17 +1,15 @@
 package com.sf.controller.admin;
 
+import com.sf.dto.UserDTO;
+import com.sf.result.PageResult;
 import com.sf.result.Result;
 import com.sf.service.UserService;
-import dto.UserLoginDTO;
-import entity.User;
+import com.sf.dto.UserLoginDTO;
+import com.sf.dto.UserPageQueryDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import vo.UserLoginVO;
+import org.springframework.web.bind.annotation.*;
+import com.sf.vo.UserVO;
 
 @RestController
 @RequestMapping("/admin")
@@ -24,9 +22,9 @@ public class UserController {
 
     //账号登录
     @PostMapping("/login")
-    public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
+    public Result<UserVO> login(@RequestBody UserLoginDTO userLoginDTO) {
         log.info("角色登录: {}", userLoginDTO);
-        UserLoginVO userLoginVO = userService.login(userLoginDTO);
+        UserVO userLoginVO = userService.login(userLoginDTO);
         return Result.success(userLoginVO);
     }
 
@@ -44,4 +42,24 @@ public class UserController {
         return Result.success();
     }
 
+    @GetMapping("/page")
+    public Result<PageResult> page(UserPageQueryDTO userPageQueryDTO) {
+        log.info("分页查询controller层{}", userPageQueryDTO);
+        PageResult pageResult = userService.pageQuery(userPageQueryDTO);
+        return Result.success(pageResult);
+    }
+
+    @PutMapping("/updateUser")
+    public Result update(@RequestBody UserDTO userDTO){
+        log.info("更新用户信息: {}", userDTO);
+        userService.update(userDTO);
+        return Result.success();
+    }
+
+    @DeleteMapping("/deleteUser")
+    public Result delete(@RequestParam int id){
+        log.info("删除用户: {}", id);
+        userService.delete(id);
+        return Result.success();
+    }
 }

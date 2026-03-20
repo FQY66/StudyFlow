@@ -1,4 +1,4 @@
-package dto;
+package com.sf.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ForumPostSummaryDTO {
+public class ForumPostDTO {
 
     /** 帖子ID */
     private Long id;
