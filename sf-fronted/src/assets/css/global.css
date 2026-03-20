@@ -1,0 +1,117 @@
+/* Global common button styles */
+.waves-red-btn {
+  --color: #ff4d4f;
+  font-family: inherit;
+  display: inline-block;
+  width: 6em;
+  height: 2.6em;
+  line-height: 2.5em;
+  text-align: center;
+  overflow: hidden;
+  margin: 0;
+  font-size: 14px;
+  z-index: 1;
+  color: var(--color);
+  border: 2px solid var(--color);
+  border-radius: 6px;
+  position: relative;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.waves-red-btn::before {
+  position: absolute;
+  content: '';
+  background: var(--color);
+  width: 150px;
+  height: 200px;
+  z-index: -1;
+  border-radius: 50%;
+  top: 100%;
+  left: 100%;
+  transition: 0.3s all;
+}
+
+.waves-red-btn:hover {
+  color: #ffffff;
+}
+
+.waves-red-btn:hover::before {
+  top: -30px;
+  left: -30px;
+}
+
+.waves-red-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.waves-red-btn:disabled::before {
+  display: none;
+}
+
+.waves-red-btn-disable {
+  --color: #e6a23c;
+}
+
+.waves-red-btn-delete {
+  --color: #f56c6c;
+}
+
+/* From Uiverse.io by vinodjangid07 */ 
+.button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: rgb(20, 20, 20);
+    border: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+    cursor: pointer;
+    transition-duration: .3s;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .svgIcon {
+    width: 12px;
+    transition-duration: .3s;
+  }
+  
+  .svgIcon path {
+    fill: white;
+  }
+  
+  .button:hover {
+    width: 140px;
+    border-radius: 50px;
+    transition-duration: .3s;
+    background-color: rgb(255, 69, 69);
+    align-items: center;
+  }
+  
+  .button:hover .svgIcon {
+    width: 50px;
+    transition-duration: .3s;
+    transform: translateY(60%);
+  }
+  
+  .button::before {
+    position: absolute;
+    top: -20px;
+    content: "Delete";
+    color: white;
+    transition-duration: .3s;
+    font-size: 2px;
+  }
+  
+  .button:hover::before {
+    font-size: 13px;
+    opacity: 1;
+    transform: translateY(30px);
+    transition-duration: .3s;
+  }
