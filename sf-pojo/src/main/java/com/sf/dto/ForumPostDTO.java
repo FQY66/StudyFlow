@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ForumPostDTO {
 
-    /** 帖子ID */
-    private Long id;
+//    /** 帖子ID */
+//    private Long id;
 
     /** 标题 */
     private String title;
@@ -23,16 +23,16 @@ public class ForumPostDTO {
     /** 类别/标签 */
     private String category;
 
-    /** 作者名称 */
+    /** 作者名字 */
     private String authorName;
 
-    /** 创建日期字符串，例如 2024-09-03 */
-    private String createdAt;
-
-    /** 评论数 */
-    private Integer commentCount;
-
-    /** 点赞数 */
-    private Integer likeCount;
+//    /** 创建日期字符串，例如 2024-09-03 */
+//    private String createdAt;
+//
+//    /** 评论数 */
+//    private Integer commentCount;
+//
+//    /** 点赞数 */
+//    private Integer likeCount;
 }
 

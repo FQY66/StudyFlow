@@ -105,12 +105,6 @@ public class UserServiceImpl implements UserService {
         String MD5pwd = DigestUtils.md5DigestAsHex(password.getBytes());
         int randomInt = new Random().nextInt(10);
         String avatar = ResourceConstant.DEFAULT_AVATAR + "defaultAvatar" + randomInt + ".png";
-        //4、创建新用户实体
-//        User user = new User();
-//        user.setUsername(username);
-//        user.setPassword(password);
-//        user.setName(name);
-//        user.setStatus(StatusConstant.ENABLE); // 默认启用状态
         User user = User.builder()
                         .username(username)
                         .name(name)

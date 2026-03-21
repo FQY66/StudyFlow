@@ -13,9 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Mapper
 
 public interface UserMapper {
-    @Select("select * from user where username = #{username} ")
 
+    @Select("select * from user where username = #{username} ")
     User getByUsername(String username);
+
+    @Select("select id from user where username = #{username} ")
+    Long getById(String username);
 
     @Insert("insert into user(username, password, name, sex, email, phone, avatar, role, status, create_time, update_time) " +
             "values(#{username}, #{password}, #{name}, #{sex}, #{email}, #{phone}, #{avatar}, #{role}, #{status}, #{createTime}, #{updateTime})")

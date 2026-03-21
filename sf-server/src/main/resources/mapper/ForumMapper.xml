@@ -2,8 +2,82 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.sf.mapper.ForumMapper">
+    <insert id="addPost" parameterType="com.sf.entity.ForumPost">
+        insert into forum_post (title, content, category, author_id,create_time,update_time)
+        values (#{title}, #{content}, #{category}, #{authorId},#{createTime},#{updateTime})
+    </insert>
+
+    <insert id="addComment" parameterType="com.sf.entity.ForumComment">
+        insert into forum_comment (post_id, content, author_id,create_time)
+        values (#{postId}, #{content}, #{authorId},#{createTime})
+    </insert>
 
     <select id="pageQuery" resultType="com.sf.entity.ForumPost" parameterType="com.sf.dto.ForumPageQueryDTO">
-
+        select id,
+               title,
+               content,
+               category,
+               comment_count,
+               author_id,
+               like_count,
+               create_time,
+               update_time
+        from forum_post
+        <where>
+            <if test="userId != null">
+                and author_id = #{userId}
+            </if>
+            <if test="title != null and title != ''">
+                and title like concat('%', #{title}, '%')
+            </if>
+            <if test="category != null and category != ''">
+                and category = #{category}
+            </if>
+        </where>
+        order by update_time desc, id desc
     </select>
+
+    <select id="getPostById" resultType="com.sf.vo.ForumPostVO" parameterType="java.lang.Long">
+        select fp.id,
+               fp.title,
+               fp.content,
+               fp.category,
+               fp.comment_count,
+               fp.author_id,
+               fp.like_count,
+               fp.update_time,
+               u.name as authorName,
+               u.avatar as authorAvatar
+        from forum_post fp
+                 left join user u on fp.author_id = u.id
+        where fp.id = #{id}
+    </select>
+
+    <select id="listCommentsByPostId" resultType="com.sf.vo.ForumCommentVO" parameterType="java.lang.Long">
+        select fc.content,
+               fc.create_time,
+               fc.author_id,
+               u.name as authorName,
+               u.avatar as authorAvatar,
+               fc.post_id
+        from forum_comment fc
+                 left join user u on fc.author_id = u.id
+        where fc.post_id = #{postId}
+        order by create_time asc
+    </select>
+
+<!--    <select id="listCommentsByPostIds" resultType="com.sf.entity.ForumComment" parameterType="java.util.List">-->
+<!--        select id,-->
+<!--               post_id,-->
+<!--               content,-->
+<!--               author_id,-->
+<!--               create_time-->
+<!--        from forum_comment-->
+<!--        where post_id in-->
+<!--        <foreach collection="list" item="postId" open="(" separator="," close=")">-->
+<!--            #{postId}-->
+<!--        </foreach>-->
+<!--        order by post_id asc, create_time asc, id asc-->
+<!--    </select>-->
+
 </mapper>

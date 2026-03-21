@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ForumCommentDTO {
 
-    /** 评论ID */
-    private Long id;
 
     /** 所属帖子ID */
     private Long postId;
@@ -23,7 +21,5 @@ public class ForumCommentDTO {
     /** 评论内容 */
     private String content;
 
-    /** 创建时间字符串，例如 2024-09-03 11:20 */
-    private String createdAt;
 }
 

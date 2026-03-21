@@ -29,7 +29,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler
     public Result exceptionHandler(SQLIntegrityConstraintViolationException ex){
         String message = ex.getMessage();
-        String[] s = message.split(" ");
-        return Result.error("用户"+s[2]+"已存在");
+        if (message.contains("Duplicate entry")) {
+            // 处理用户名重复的情况
+            String[] s = message.split(" ");
+            return Result.error("用户名" + s[2] + "已存在");
+        } else if (message.contains("foreign key constraint fails")) {
+            // 处理外键约束错误
+            log.error("关联的用户不存在：{}", message);
+            return Result.error("关联的用户不存在");
+        } else {
+            // 其他数据库约束错误
+            log.error("数据库操作失败：{}", message);
+            return Result.error("数据库操作失败");
+        }
     }
 }

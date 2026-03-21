@@ -40,24 +40,28 @@ public class AutoFillAspect {
 
         if (operationType == OperationType.INSERT) {
             try {
-                Method setCreateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class);
-                Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
+                try{
+                    Method setCreateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class);
+                    setCreateTime.invoke(entity,now);
 
-                setCreateTime.invoke(entity,now);
-                setUpdateTime.invoke(entity,now);
+                }catch(NoSuchMethodException e){
+                    log.warn("实体类{}没有setCreateTime方法，跳过该字段的填充", entity.getClass().getName());
+                }
 
+                try{
+                    Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
+                    setUpdateTime.invoke(entity,now);
+                }catch (NoSuchMethodException e){
+                    log.warn("实体类{}没有setUpdateTime方法，跳过该字段的填充", entity.getClass().getName());
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-
         if (operationType == OperationType.UPDATE) {
             try {
                 Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
-
-
                 setUpdateTime.invoke(entity,now);
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
