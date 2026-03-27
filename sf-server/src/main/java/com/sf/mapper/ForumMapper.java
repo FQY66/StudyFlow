@@ -22,10 +22,17 @@ public interface ForumMapper {
     List<ForumCommentVO> listCommentsByPostId(Long postId);
 
 
-
     @AutoFill(OperationType.INSERT)
     void addPost(ForumPost forumPost);
 
     @AutoFill(OperationType.INSERT)
     void addComment(ForumComment forumComment);
+
+    void deletePost(Long postId);
+
+    void deleteComment(Long commentId);
+
+    List<Long> getCommentIdsBypostId(Long postId);
+
+    void deleteByCommentIds(List<Long> commentIds);
 }

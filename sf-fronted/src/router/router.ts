@@ -5,6 +5,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import Index from '@/pages/index.vue'
 import NotFound from '@/pages/common/NotFound.vue'
 import Square from '@/pages/forum/Square.vue'
+import ChatWindow from '@/pages/forum/ChatWindow.vue'
 import Users from '@/pages/system/Users.vue'
 import Management from '@/pages/projects/Management.vue'
 import News from '@/pages/projects/News.vue'
@@ -14,6 +15,8 @@ import CoursesDetail from '@/pages/projects/CoursesDetail.vue'
 import Login from '@/pages/login/Login.vue'
 import Register from '@/pages/login/Register.vue'
 import ArticleDetail from '@/pages/projects/ArticleDetail.vue'
+import NewProject from '@/pages/projects/NewProject.vue'
+import UploadTest from '@/pages/common/UploadTest.vue'
 
 const routes = [
   { path: '/login', component: Login },
@@ -24,13 +27,17 @@ const routes = [
     children: [
       { path: '', component: Index },
       { path: 'square', component: Square },
+      { path: 'square/forum', component: Square },
+      { path: 'square/chat', component: ChatWindow },
       { path: 'system/users', component: Users },
       { path: 'projects/management', component: Management },
+      { path: 'projects/new', component: NewProject },
       { path: 'projects/news', component: News },
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },
       { path: 'projects/courses/:id', component: CoursesDetail },
-      { path: 'projects/courses/article/:id', component: ArticleDetail }
+      { path: 'projects/courses/article/:id', component: ArticleDetail },
+      { path: 'common/upload-test', component: UploadTest }
     ]
   },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }

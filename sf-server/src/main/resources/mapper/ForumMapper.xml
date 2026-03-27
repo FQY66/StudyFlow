@@ -12,6 +12,21 @@
         values (#{postId}, #{content}, #{authorId},#{createTime})
     </insert>
 
+    <delete id="deletePost" parameterType="java.lang.Long">
+        delete from forum_post where id = #{id}
+    </delete>
+
+    <delete id="deleteComment" parameterType="java.lang.Long">
+        delete from forum_comment where id = #{id}
+    </delete>
+
+    <delete id="deleteByCommentIds" parameterType="java.util.List">
+        delete from forum_comment where id in
+        <foreach collection="commentIds" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
     <select id="pageQuery" resultType="com.sf.entity.ForumPost" parameterType="com.sf.dto.ForumPageQueryDTO">
         select id,
                title,
@@ -65,8 +80,11 @@
         where fc.post_id = #{postId}
         order by create_time asc
     </select>
+    <select id="getCommentIdsBypostId" resultType="java.lang.Long">
+        select id from forum_comment where post_id = #{postId}
+    </select>
 
-<!--    <select id="listCommentsByPostIds" resultType="com.sf.entity.ForumComment" parameterType="java.util.List">-->
+    <!--    <select id="listCommentsByPostIds" resultType="com.sf.entity.ForumComment" parameterType="java.util.List">-->
 <!--        select id,-->
 <!--               post_id,-->
 <!--               content,-->

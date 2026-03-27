@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 interface ProjectCard {
   id: number
@@ -14,6 +15,7 @@ interface ProjectCard {
 
 const keyword = ref('')
 const activeYear = ref<'all' | number>('all')
+const router = useRouter()
 
 const projects = ref<ProjectCard[]>([
   {
@@ -79,7 +81,7 @@ const filteredProjects = computed(() => {
 })
 
 const handleCreate = () => {
-  // TODO: 打开新建项目弹窗
+  router.push('/projects/new')
 }
 </script>
 

@@ -24,8 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import com.sf.vo.UserVO;
-
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -104,7 +102,7 @@ public class UserServiceImpl implements UserService {
         //3、对密码进行MD5加密
         String MD5pwd = DigestUtils.md5DigestAsHex(password.getBytes());
         int randomInt = new Random().nextInt(10);
-        String avatar = ResourceConstant.DEFAULT_AVATAR + "defaultAvatar" + randomInt + ".png";
+        String avatar = ResourceConstant.DEFAULT_USER_AVATAR + "defaultAvatar" + randomInt + ".png";
         User user = User.builder()
                         .username(username)
                         .name(name)

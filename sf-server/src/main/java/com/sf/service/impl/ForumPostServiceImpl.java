@@ -78,4 +78,21 @@ public class ForumPostServiceImpl implements ForumPostService {
         forumMapper.addComment(forumComment);
     }
 
+    @Override
+    public void deletePost(Long postId) {
+        forumMapper.deletePost(postId);
+        List<Long> commentIds = forumMapper.getCommentIdsBypostId(postId);
+        if (commentIds != null && !commentIds.isEmpty()) {
+            //对commentIds里面的每个元素调用deleteComment方法删除，
+            // 该方法等价 commentIds.forEach(commentId -> forumMapper.deleteComment(commentId));
+            log.info("Mapper:删除评论，commentIds: {}", commentIds);
+            forumMapper.deleteByCommentIds(commentIds);
+        }
+    }
+
+    @Override
+    public void deleteComment(Long commentId) {
+        forumMapper.deleteComment(commentId);
+    }
+
 }

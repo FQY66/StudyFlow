@@ -15,4 +15,8 @@ public interface ForumPostService {
     void addPost(ForumPostDTO forumPostVO);
 
     void addComment(ForumCommentDTO forumCommentDTO);
+
+    void deletePost(Long postId);
+
+    void deleteComment(Long commentId);
 }

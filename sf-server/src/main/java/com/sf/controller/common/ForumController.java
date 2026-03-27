@@ -51,4 +51,19 @@ public class ForumController {
         log.info("添加评论controller层成功");
         return Result.success();
     }
+    @DeleteMapping("/deletePost")
+    public Result deletePost(@RequestParam Long postId) {
+        log.info("删除帖子controller层postId={}", postId);
+        forumPostService.deletePost(postId);
+        log.info("删除帖子controller层成功");
+        return Result.success();
+    }
+    @DeleteMapping("/deleteComment")
+    public Result deleteComment(@RequestParam Long commentId) {
+        log.info("controller:开始删除评论commentId={}", commentId);
+        forumPostService.deleteComment(commentId);
+        log.info("controller:删除评论成功");
+        return Result.success();
+    }
+
 }

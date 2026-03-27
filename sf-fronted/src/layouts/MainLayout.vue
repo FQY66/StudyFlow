@@ -11,6 +11,7 @@ import {
   Plus,
   InfoFilled,
   Collection,
+  Files,
   Fold,
   Expand,
   Refresh,
@@ -18,6 +19,8 @@ import {
   Bell,
   Setting as SettingIcon,
 } from '@element-plus/icons-vue'
+import { AiRobotIcon, chatIcon, forumIcon, squareIcon } from '@/components/icons'
+import Square from '@/pages/forum/Square.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,11 +33,14 @@ const routeTitle = computed(() => {
   const path = route.path
   const map: Record<string, string> = {
     '/': '首页总览',
-    '/square': '留言广场',
+    '/square': '社区论坛',
+    '/square/forum': '留言广场',
+    '/square/chat': '消息窗口',
     '/projects/management': '项目管理',
     '/projects/new': '新增项目',
     '/projects/info': '研学资讯',
     '/projects/courses': '精品课程',
+    '/common/upload-test': '测试栏',
     '/system/users': '用户管理',
   }
   return map[path] || '首页总览'
@@ -67,10 +73,22 @@ const onRefresh = () => {
           <el-icon><Odometer /></el-icon>
           <span>首页总览</span>
         </el-menu-item>
-        <el-menu-item index="/square">
-          <el-icon><Reading /></el-icon>
+
+        <el-sub-menu index="/square">
+          <template #title>
+            <el-icon><forumIcon /></el-icon>
+            <span>社区论坛</span>
+          </template>
+        <el-menu-item index="/square/forum">
+          <el-icon><squareIcon /></el-icon>
           <span>留言广场</span>
         </el-menu-item>
+        <el-menu-item index="/square/chat">
+          <el-icon><chatIcon /></el-icon>
+          <span>消息窗口</span>
+        </el-menu-item>
+        </el-sub-menu>
+
         <el-sub-menu index="/projects">
           <template #title>
             <el-icon><Folder /></el-icon>
@@ -84,7 +102,8 @@ const onRefresh = () => {
             <el-icon><Plus /></el-icon>
             新增项目
           </el-menu-item>
-          <el-menu-item index="/projects/news">
+        </el-sub-menu>
+        <el-menu-item index="/projects/news">
             <el-icon><InfoFilled /></el-icon>
             研学资讯
           </el-menu-item>
@@ -92,7 +111,16 @@ const onRefresh = () => {
             <el-icon><Collection /></el-icon>
             精品课程
           </el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/common/upload-test">
+          <el-icon><Files /></el-icon>
+          <span>测试栏</span>
+        </el-menu-item>
+        <el-menu-item index="/sf/ai">
+          <el-icon>
+            <AiRobotIcon />
+          </el-icon>
+          <span>Ai智能问答</span>
+        </el-menu-item>
         <el-sub-menu index="/system">
           <template #title>
             <el-icon><Setting /></el-icon>
@@ -103,7 +131,7 @@ const onRefresh = () => {
             用户管理
           </el-menu-item>
         </el-sub-menu>
-        
+   
       </el-menu>
     </el-aside>
 
@@ -268,6 +296,12 @@ const onRefresh = () => {
 
 .header-avatar {
   margin-left: 8px;
+}
+
+.ai-icon svg {
+  width: 1em;
+  height: 1em;
+  display: block;
 }
 
 .layout-main {

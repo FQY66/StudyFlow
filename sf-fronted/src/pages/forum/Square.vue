@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 interface ForumComment {
@@ -92,8 +92,8 @@ const pastelColors = [
   '#fff0ff'
 ]
 
-function getCardColor(index: number) {
-  return pastelColors[index % pastelColors.length]
+function getCardColor(index: number): string {
+  return pastelColors[index % pastelColors.length] || '#f9f9f9'
 }
 
 const formatDateTime = (value?: string) => {
@@ -361,6 +361,71 @@ async function handleSubmitComment() {
   }
 }
 
+async function handleDeletePost(post: ForumPost) {
+  try {
+    await ElMessageBox.confirm('确认删除这条帖子吗？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const { data } = await request.delete<ApiResult<null>>('/forum/deletePost', {
+      params: { postId: post.id }
+    })
+
+    if (data.code !== 1) {
+      ElMessage.error(data.msg || '删除帖子失败')
+      return
+    }
+
+    ElMessage.success('帖子已删除')
+
+    if (currentPost.value?.id === post.id) {
+      detailVisible.value = false
+      currentPost.value = null
+      comments.value = []
+    }
+
+    await fetchPosts()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.msg || '删除帖子失败，请稍后重试')
+    }
+  }
+}
+
+async function handleDeleteComment(comment: ForumComment) {
+  if (!comment.id || !currentPost.value) {
+    ElMessage.warning('评论信息无效，无法删除')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('确认删除这条评论吗？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const { data } = await request.delete<ApiResult<null>>('/forum/deleteComment', {
+      params: { commentId: comment.id }
+    })
+
+    if (data.code !== 1) {
+      ElMessage.error(data.msg || '删除评论失败')
+      return
+    }
+
+    ElMessage.success('评论已删除')
+    await openDetail(currentPost.value)
+    await fetchPosts()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.msg || '删除评论失败，请稍后重试')
+    }
+  }
+}
+
 onMounted(fetchPosts)
 </script>
 
@@ -542,15 +607,26 @@ onMounted(fetchPosts)
               <span v-else class="author-fallback-avatar">{{ (currentPost.authorName || '匿').slice(0, 1) }}</span>
               <span>{{ currentPost.authorName }}</span>
             </span>
-            <div class="meta">
-              <span class="meta-item">
-                <el-icon><Comment /></el-icon>
-                <span class="meta-number">{{ currentPost.commentCount }}</span>
-              </span>
-              <span class="meta-item">
-                <el-icon><Star /></el-icon>
-                <span class="meta-number">{{ currentPost.likeCount }}</span>
-              </span>
+            <div class="drawer-footer-right">
+              <div class="meta">
+                <span class="meta-item">
+                  <el-icon><Comment /></el-icon>
+                  <span class="meta-number">{{ currentPost.commentCount }}</span>
+                </span>
+                <span class="meta-item">
+                  <el-icon><Star /></el-icon>
+                  <span class="meta-number">{{ currentPost.likeCount }}</span>
+                </span>
+              </div>
+              <button
+                class="danger-icon-btn"
+                data-tip="删除帖子"
+                @click="handleDeletePost(currentPost)"
+              >
+                <svg viewBox="0 0 15 17.5" height="17.5" width="15" xmlns="http://www.w3.org/2000/svg" class="danger-icon">
+                  <path transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z" />
+                </svg>
+              </button>
             </div>
           </div>
         </section>
@@ -565,9 +641,10 @@ onMounted(fetchPosts)
 
           <div v-else class="comments-list">
             <div
-              v-for="item in comments"
+              v-for="(item, commentIdx) in comments"
               :key="item.id"
               class="comment-item"
+              :class="{ 'comment-item-first': commentIdx === 0 }"
             >
               <div class="avatar-wrap">
                 <el-avatar v-if="item.authorAvatar" :src="item.authorAvatar" class="avatar-img" />
@@ -582,7 +659,18 @@ onMounted(fetchPosts)
               <div class="comment-content">
                 <div class="comment-header">
                   <span class="comment-author">{{ item.authorName || '匿名用户' }}</span>
-                  <span class="comment-time">{{ item.createdAt }}</span>
+                  <div class="comment-header-right">
+                    <span class="comment-time">{{ item.createdAt }}</span>
+                    <button
+                      class="danger-icon-btn danger-icon-btn-sm"
+                      data-tip="删除评论"
+                      @click="handleDeleteComment(item)"
+                    >
+                      <svg viewBox="0 0 15 17.5" height="16" width="14" xmlns="http://www.w3.org/2000/svg" class="danger-icon">
+                        <path transform="translate(-2.5 -1.25)" d="M15,18.75H5A1.251,1.251,0,0,1,3.75,17.5V5H2.5V3.75h15V5H16.25V17.5A1.251,1.251,0,0,1,15,18.75ZM5,5V17.5H15V5Zm7.5,10H11.25V7.5H12.5V15ZM8.75,15H7.5V7.5H8.75V15ZM12.5,2.5h-5V1.25h5V2.5Z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <p class="comment-text">
                   {{ item.content }}
@@ -831,6 +919,13 @@ onMounted(fetchPosts)
   align-items: center;
   font-size: 12px;
   color: #606266;
+  gap: 10px;
+}
+
+.drawer-footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .author {
@@ -869,6 +964,83 @@ onMounted(fetchPosts)
 .meta-number {
   font-size: 12px;
   color: #606266;
+}
+
+.danger-icon-btn {
+  background-color: #efe7d6;
+  position: relative;
+  border: 2px solid #2f2a2a;
+  border-radius: 9px;
+  width: 34px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 2px #2f2a2a;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.danger-icon-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: -122%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  background-color: #a80707;
+  border: 2px solid #2f2a2a;
+  box-shadow: 2px 2px #2f2a2a;
+  padding: 3px 8px;
+  border-radius: 8px;
+  transition: all 0.2s linear;
+  transition-delay: 0.15s;
+  color: #fff8f8;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.danger-icon {
+  transform: scale(1.12);
+  transition: transform 0.2s linear;
+}
+
+.danger-icon path {
+  fill: #4b4e56;
+  transition: fill 0.2s linear;
+}
+
+.danger-icon-btn:hover {
+  background-color: #f4dede;
+}
+
+.danger-icon-btn:hover > .danger-icon {
+  transform: scale(1.36);
+}
+
+.danger-icon-btn:hover > .danger-icon path {
+  fill: #a80707;
+}
+
+.danger-icon-btn:hover::after {
+  visibility: visible;
+  opacity: 1;
+  top: -152%;
+}
+
+.danger-icon-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px #2f2a2a;
+}
+
+.danger-icon-btn-sm {
+  width: 32px;
+  height: 28px;
 }
 
 .drawer-wrapper {
@@ -952,7 +1124,9 @@ onMounted(fetchPosts)
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: visible;
   padding-right: 4px;
+  padding-top: 18px;
   scrollbar-width: none;
 }
 
@@ -970,6 +1144,11 @@ onMounted(fetchPosts)
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.46);
   box-shadow: 2px 2px rgba(47, 42, 42, 0.15);
+  overflow: visible;
+}
+
+.comment-item-first {
+  padding-top: 14px;
 }
 
 .avatar-wrap {
@@ -1000,8 +1179,15 @@ onMounted(fetchPosts)
 .comment-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 2px;
+}
+
+.comment-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .comment-author {
