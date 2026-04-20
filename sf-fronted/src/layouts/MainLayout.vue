@@ -96,7 +96,7 @@ const onRefresh = () => {
           </template>
           <el-menu-item index="/projects/management">
             <el-icon><Tickets /></el-icon>
-            项目管理
+            特色项目
           </el-menu-item>
           <el-menu-item index="/projects/new">
             <el-icon><Plus /></el-icon>

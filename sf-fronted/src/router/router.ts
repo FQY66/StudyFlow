@@ -16,6 +16,7 @@ import Login from '@/pages/login/Login.vue'
 import Register from '@/pages/login/Register.vue'
 import ArticleDetail from '@/pages/projects/ArticleDetail.vue'
 import NewProject from '@/pages/projects/NewProject.vue'
+import ProjectDetail from '@/pages/projects/ProjectDetail.vue'
 import UploadTest from '@/pages/common/UploadTest.vue'
 
 const routes = [
@@ -32,6 +33,7 @@ const routes = [
       { path: 'system/users', component: Users },
       { path: 'projects/management', component: Management },
       { path: 'projects/new', component: NewProject },
+      { path: 'projects/detail/:id', component: ProjectDetail },
       { path: 'projects/news', component: News },
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },

@@ -9,6 +9,13 @@ spring:
     multipart:
       max-file-size: ${spring.servlet.multipart.max-file-size}
       max-request-size: ${spring.servlet.multipart.max-request-size}
+  data:
+    redis:
+      host: ${sf.redis.host}
+      port: ${sf.redis.port}
+      password: ${sf.redis.password}
+      timeout: ${sf.redis.timeout}
+      database: ${sf.redis.database}
   datasource:
     driver-class-name: ${sf.datasource.driver-class-name}
     url: ${sf.datasource.url}

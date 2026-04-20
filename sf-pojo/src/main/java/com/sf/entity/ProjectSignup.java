@@ -22,7 +22,7 @@ public class ProjectSignup implements Serializable {
     private Long userId;
 
     /**
-     * 报名状态：PENDING（待审核）/ APPROVED（已通过）/ REJECTED（已拒绝）/ CANCELLED（已取消）
+     * 报名状态：PENDING（待审核）/ APPROVED（已通过）/ REJECTED（已拒绝）
      */
     private String status;
 

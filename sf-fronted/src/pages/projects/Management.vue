@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import request from '@/utils/request'
 
 interface ProjectCard {
   id: number
@@ -13,52 +14,81 @@ interface ProjectCard {
   likes: number
 }
 
+interface ProjectStudyVO {
+  id: number
+  coverPath?: string
+  theme?: string
+  introduction?: string
+  content?: string
+  category?: string
+  capacity?: number
+  status?: string
+  createTime?: string
+  updateTime?: string
+  likeCount?: number
+  clickCount?: number
+}
+
 const keyword = ref('')
 const activeYear = ref<'all' | number>('all')
 const router = useRouter()
+const loading = ref(false)
+const projects = ref<ProjectCard[]>([])
+const pagination = ref({
+  page: 1,
+  pageSize: 15,
+  total: 0
+})
 
-const projects = ref<ProjectCard[]>([
-  {
-    id: 1,
-    title: '古都文脉探寻',
-    category: '古都文化',
-    year: 2024,
-    cover: 'https://picsum.photos/seed/sf-p1/600/360',
-    createdAt: '2024-08-26',
-    views: 56,
-    likes: 96
-  },
-  {
-    id: 2,
-    title: '红色记忆研学',
-    category: '红色探访',
-    year: 2024,
-    cover: 'https://picsum.photos/seed/sf-p2/600/360',
-    createdAt: '2024-02-22',
-    views: 109,
-    likes: 80
-  },
-  {
-    id: 3,
-    title: '人工智能前沿',
-    category: '科技创新',
-    year: 2023,
-    cover: 'https://picsum.photos/seed/sf-p3/600/360',
-    createdAt: '2023-11-30',
-    views: 88,
-    likes: 72
-  },
-  {
-    id: 4,
-    title: '航天航空探秘',
-    category: '探秘航天',
-    year: 2023,
-    cover: 'https://picsum.photos/seed/sf-p4/600/360',
-    createdAt: '2023-04-10',
-    views: 146,
-    likes: 104
+const toYear = (dateStr?: string) => {
+  if (!dateStr) return new Date().getFullYear()
+  const year = new Date(dateStr.replace(/-/g, '/')).getFullYear()
+  return Number.isNaN(year) ? new Date().getFullYear() : year
+}
+
+const resolveCover = (coverPath?: string) => {
+  if (!coverPath) return 'https://picsum.photos/seed/sf-project/600/360'
+  if (/^https?:\/\//i.test(coverPath)) return coverPath
+  return coverPath.startsWith('/')
+    ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${coverPath}`
+    : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/${coverPath}`
+}
+
+const loadProjects = async () => {
+  loading.value = true
+  try {
+    const { data } = await request.get('/project/page', {
+      params: {
+        page: pagination.value.page,
+        pageSize: pagination.value.pageSize
+      }
+    })
+
+    const pageData = data?.data || {}
+    const records = (pageData.records || []) as ProjectStudyVO[]
+    pagination.value.total = Number(pageData.total || 0)
+    projects.value = records.map((item) => ({
+      id: item.id,
+      title: item.theme || '未命名项目',
+      category: item.category || '未分类',
+      year: toYear(item.createTime || item.updateTime),
+      cover: resolveCover(item.coverPath),
+      createdAt: item.createTime || item.updateTime || '-',
+      views: item.clickCount ?? 0,
+      likes: item.likeCount ?? 0
+    }))
+  } finally {
+    loading.value = false
   }
-])
+}
+
+onMounted(() => {
+  loadProjects()
+})
+
+watch([keyword, activeYear], () => {
+  pagination.value.page = 1
+})
 
 const yearOptions = computed(() => {
   const years = Array.from(new Set(projects.value.map(p => p.year))).sort(
@@ -80,8 +110,19 @@ const filteredProjects = computed(() => {
   })
 })
 
-const handleCreate = () => {
-  router.push('/projects/new')
+const handleCardClick = (project: ProjectCard) => {
+  router.push(`/projects/detail/${project.id}`)
+}
+
+const handleCurrentChange = async (page: number) => {
+  pagination.value.page = page
+  await loadProjects()
+}
+
+const handleSizeChange = async (size: number) => {
+  pagination.value.pageSize = size
+  pagination.value.page = 1
+  await loadProjects()
 }
 </script>
 
@@ -91,13 +132,14 @@ const handleCreate = () => {
       <el-input
         v-model="keyword"
         class="search-input"
-        placeholder="输入项目名称进行筛选"
+        placeholder="输入项目名称或类别进行搜索"
         clearable
+        
       />
 
       <div class="header-right">
         <div class="year-tabs">
-          <button
+          <!-- <button
             class="year-tab"
             :class="{ active: activeYear === 'all' }"
             type="button"
@@ -114,20 +156,21 @@ const handleCreate = () => {
             @click="activeYear = year"
           >
             {{ year }}
-          </button>
+          </button> -->
         </div>
 
-        <el-button type="primary" @click="handleCreate" plain class="btn-post">
+        <!-- <el-button type="primary" @click="handleCreate" plain class="btn-post">
           新建项目
-        </el-button>
+        </el-button> -->
       </div>
     </header>
 
-    <main class="card-grid">
+    <main v-loading="loading" class="card-grid">
       <article
         v-for="project in filteredProjects"
         :key="project.id"
         class="project-card"
+        @click="handleCardClick(project)"
       >
         <div class="cover-wrapper">
           <img :src="project.cover" class="cover-img" alt="" />
@@ -156,24 +199,45 @@ const handleCreate = () => {
           </div>
         </div>
       </article>
+
+      <div v-if="!loading && filteredProjects.length === 0" class="empty-state">
+        暂无符合条件的项目
+      </div>
     </main>
+
+    <div class="pagination-wrap">
+      <el-pagination
+        class="custom-pagination"
+        background
+        layout="prev, pager, next, sizes, total"
+        :current-page="pagination.page"
+        :page-size="pagination.pageSize"
+        :page-sizes="[15, 30, 45, 60]"
+        :total="pagination.total"
+        @current-change="handleCurrentChange"
+        @size-change="handleSizeChange"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .project-page {
-  padding: 16px 8px 8px;
+  padding: 10px 8px 8px;
+  transform: scale(0.96);
+  transform-origin: top center;
 }
 
 .project-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .search-input {
   flex: 1;
+
 }
 
 .header-right {
@@ -207,8 +271,9 @@ const handleCreate = () => {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  min-height: 240px;
 }
 
 .project-card {
@@ -222,14 +287,23 @@ const handleCreate = () => {
   cursor: pointer;
 }
 .project-card:hover {
-  transform: scale(1.05);
+  transform: scale(1.02);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 32px 0;
+  text-align: center;
+  color: #909399;
+  background: #fff;
+  border-radius: 12px;
 }
 
 .cover-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 60%;
+  padding-top: 56%;
   overflow: hidden;
 }
 
@@ -253,13 +327,13 @@ const handleCreate = () => {
 }
 
 .card-body {
-  padding: 12px 14px 10px;
+  padding: 10px 12px 8px;
 }
 
 .card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: #303133;
 }
 
@@ -267,7 +341,7 @@ const handleCreate = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   color: #909399;
 }
 
@@ -300,6 +374,12 @@ const handleCreate = () => {
 .btn-post.is-plain:active {
   background-color: rgba(10, 118, 226, 0.2) !important;
   border-color: rgba(64, 158, 255, 0.25) !important;
+}
+
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 </style>
 

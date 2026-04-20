@@ -33,6 +33,7 @@
         <jjwt>0.9.1</jjwt>
         <jaxb-api>2.3.1</jaxb-api>
         <pagehelper>2.1.0</pagehelper>
+        <redis>4.0.3</redis>
     </properties>
 
     <dependencyManagement>
@@ -42,6 +43,11 @@
                 <groupId>org.mybatis.spring.boot</groupId>
                 <artifactId>mybatis-spring-boot-starter</artifactId>
                 <version>${mybatis.spring}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-data-redis</artifactId>
+                <version>${redis}</version>
             </dependency>
 
             <dependency>

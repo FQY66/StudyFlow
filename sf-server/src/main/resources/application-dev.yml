@@ -10,7 +10,12 @@ sf:
     port: 3306
     database: study_flow
     url: jdbc:mysql://${sf.datasource.host}:${sf.datasource.port}/${sf.datasource.database}?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
-
+  redis:
+    host: localhost
+    port: 6379
+    password: 123456
+    timeout: 60
+    database: 1
 spring:
   servlet:
     multipart:

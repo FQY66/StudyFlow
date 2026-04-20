@@ -1,0 +1,47 @@
+package com.sf.service.impl;
+
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
+import com.sf.dto.ProjectPageQueryDTO;
+import com.sf.entity.ProjectStudy;
+import com.sf.mapper.ProjectMapper;
+import com.sf.result.PageResult;
+import com.sf.service.ProjectService;
+import com.sf.vo.ProjectStudyVO;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@Slf4j
+public class ProjectServiceImpl implements ProjectService {
+    @Autowired
+    private ProjectMapper projectMapper;
+    @Override
+    public PageResult pageQuery(ProjectPageQueryDTO projectPageQueryDTO) {
+        log.info("分页查询项目Service层: {}", projectPageQueryDTO);
+        PageHelper.startPage(projectPageQueryDTO.getPage(), projectPageQueryDTO.getPageSize());
+        Page<ProjectStudyVO> page = projectMapper.pageQuery(projectPageQueryDTO);
+        log.info("page的total: {}", page.getTotal());
+        log.info("page的pageSize: {}", page.getPageSize());
+        log.info("page的records: {}", page.getResult().size());
+        List<ProjectStudyVO> records = page.getResult();
+        // 填充报名用户列表
+        records.forEach(record -> {
+            record.setProjectSignupList(projectMapper.getSignupByProjectId(record.getId()));
+        });
+        return new PageResult(page.getTotal(), records);
+    }
+
+    @Override
+    public ProjectStudyVO getById(Integer id) {
+        log.info("根据id查询项目Service层: {}", id);
+        ProjectStudyVO project = projectMapper.getById(id);
+        if (project != null) {
+            project.setProjectSignupList(projectMapper.getSignupByProjectId(project.getId()));
+        }
+        return project;
+    }
+}
