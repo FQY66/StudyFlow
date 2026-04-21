@@ -59,47 +59,70 @@
         </div>
 
         <div class="form-wrapper">
-        <h1 class="title">欢迎回来</h1>
-        <p class="subtitle">输入您的账号信息，进入高校研学交流平台</p>
+          <h1 class="title">欢迎回来</h1>
+          <p class="subtitle">输入您的账号信息，先选择身份再进入对应角色的工作台</p>
 
-        <el-form :model="form" label-position="top" class="login-form">
-          <el-form-item label="个人账号" prop="email">
-            <el-input
-              v-model="form.user"
-              placeholder="输入你的账号"
-              autocomplete="email"
-            />
-          </el-form-item>
-
-          <el-form-item label="密码" prop="password">
-            <el-input
-              v-model="form.password"
-              placeholder="请输入密码"
-              show-password
-              autocomplete="current-password"
-            />
-          </el-form-item>
-
-          <div class="form-actions">
-            <el-checkbox v-model="form.remember">记住账号</el-checkbox>
-            <a href="#" class="forgot-link">忘记密码？</a>
+          <div class="role-switcher">
+            <span class="role-switcher-label">选择身份</span>
+            <div class="role-switcher-buttons">
+              <el-button
+                :type="form.role === '学生' ? 'primary' : 'default'"
+                round
+                @click="form.role = '学生'"
+              >
+                学生
+              </el-button>
+              <el-button
+                :type="form.role === '老师' ? 'primary' : 'default'"
+                round
+                @click="form.role = '老师'"
+              >
+                老师
+              </el-button>
+              <el-button
+                :type="form.role === '管理员' ? 'primary' : 'default'"
+                round
+                @click="form.role = '管理员'"
+              >
+                管理员
+              </el-button>
+            </div>
           </div>
 
-          <el-button type="primary" class="submit" round @click="onLogin" :loading="loading" style="width: 100%;">
-            登录
-          </el-button>
+          <el-form :model="form" label-position="top" class="login-form">
+            <el-form-item label="个人账号" prop="email">
+              <el-input
+                v-model="form.user"
+                placeholder="输入你的账号"
+                autocomplete="email"
+              />
+            </el-form-item>
 
-          <!-- <el-button type="outline" class="google" round @click="onLoginWithGoogle" style="width: 100%;">
-            使用其他方式登录
-          </el-button> -->
+            <el-form-item label="密码" prop="password">
+              <el-input
+                v-model="form.password"
+                placeholder="请输入密码"
+                show-password
+                autocomplete="current-password"
+              />
+            </el-form-item>
 
-          <div class="signup">
-            <span>没有账号？</span>
-            <router-link to="/register">注册</router-link>
-          </div>
-        </el-form>
+            <div class="form-actions">
+              <el-checkbox v-model="form.remember">记住账号</el-checkbox>
+              <a href="#" class="forgot-link">忘记密码？</a>
+            </div>
+
+            <el-button type="primary" class="submit" round @click="onLogin" :loading="loading" style="width: 100%;">
+              登录
+            </el-button>
+
+            <div class="signup">
+              <span>没有账号？</span>
+              <router-link to="/register">注册</router-link>
+            </div>
+          </el-form>
+        </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -117,6 +140,7 @@ const form = reactive({
   user: '',
   password: '',
   remember: false,
+  role: '学生',
 })
 
 const loading = ref(false)
@@ -140,9 +164,10 @@ async function onLogin() {
   try {
     // 1. 调用后端登录接口
     const response = await axios.post(`${API_BASE_URL}/admin/login`, {
-      // 后端要求的字段名是 username / password
+      // 后端要求的字段名是 username / password / role
       username: form.user,
       password: form.password,
+      role: form.role,
     })
 
     // 2. 判断后端返回是否成功（Result.code === 1 表示成功）
@@ -151,18 +176,42 @@ async function onLogin() {
       return
     }
 
-    // 3. 取出 token 并存到本地（路由守卫会用它判断是否登录）
-    const token = response.data?.data?.token
+    // 3. 取出 token 和用户信息并存到本地（路由守卫与 toolbar 会用到）
+    const loginData = response.data?.data || {}
+    const token = loginData?.token
     if (!token) {
       ElMessage.error('登录成功，但未获取到 token')
       return
     }
 
-    localStorage.setItem('token', token)
+    const storage = form.remember ? localStorage : sessionStorage
+    const oppositeStorage = form.remember ? sessionStorage : localStorage
+
+    oppositeStorage.removeItem('token')
+    oppositeStorage.removeItem('role')
+    oppositeStorage.removeItem('userRole')
+
+    storage.setItem('token', token)
+    storage.setItem('role', loginData?.role || form.role)
+    storage.setItem('userRole', loginData?.role || form.role)
+
+    const userFields = ['id', 'username', 'name', 'nickname', 'avatar', 'avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
+    userFields.forEach((key) => {
+      const value = loginData?.[key]
+      if (value !== undefined && value !== null && value !== '') {
+        localStorage.setItem(key, String(value))
+      }
+    })
+
     ElMessage.success('登录成功')
 
-    // 4. 跳转到首页
-    router.push('/')
+    // 4. 根据身份跳转到对应首页
+    const roleHomeMap: Record<string, string> = {
+      学生: '/student/projects/news',
+      老师: '/',
+      管理员: '/',
+    }
+    router.push(roleHomeMap[form.role] || '/')
   } catch (error) {
     ElMessage.error('登录接口请求失败，请检查后端服务是否已启动')
   } finally {
@@ -548,6 +597,28 @@ async function onLogin() {
   font-size: 14px;
   color: rgba(0, 0, 0, 0.55);
   margin-bottom: 28px;
+}
+
+.role-switcher {
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid #e7ecf5;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8faff);
+}
+
+.role-switcher-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.role-switcher-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .login-form {

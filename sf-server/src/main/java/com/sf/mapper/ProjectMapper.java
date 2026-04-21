@@ -1,8 +1,10 @@
 package com.sf.mapper;
 
 import com.github.pagehelper.Page;
+import com.sf.annotation.AutoFill;
 import com.sf.dto.ProjectPageQueryDTO;
 import com.sf.entity.ProjectStudy;
+import com.sf.enumeration.OperationType;
 import com.sf.vo.ProjectStudyVO;
 import com.sf.vo.UserVO;
 import org.apache.ibatis.annotations.Mapper;
@@ -15,7 +17,13 @@ public interface ProjectMapper {
 
     List<UserVO> getSignupByProjectId(Integer projectId);
 
+    @AutoFill(OperationType.INSERT)
     void insert(ProjectStudy projectStudy);
 
+    @AutoFill(OperationType.UPDATE)
+    void update(ProjectStudy projectStudy);
+
     ProjectStudyVO getById(Integer id);
+
+    void delete(Integer id);
 }

@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
     public UserVO login(UserLoginDTO userLoginDTO) {
         String username = userLoginDTO.getUsername();
         String password = userLoginDTO.getPassword();
-
+        String role = userLoginDTO.getRole();
         //1、根据用户名查询数据库中的数据
         User user = userMapper.getByUsername(username);
 
@@ -63,16 +63,22 @@ public class UserServiceImpl implements UserService {
             //账号被锁定
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
         }
+        if(!role.equals(user.getRole())) {
+            //角色身份错误
+            throw new IllegalArgumentException(MessageConstant.ROLE_ERROR);
+        }
         log.info("加密后的密码：" + password);
 
         //生成JWT密钥
         Map<String, Object> claims = new HashMap<>();
         claims.put(JwtClaimsConstant.USER_ID, user.getId());
+        claims.put(JwtClaimsConstant.ROLE, user.getRole());
         String token = JwtUtil.createJWT(
                 jwtProperties.getAdminSecretKey(),
                 jwtProperties.getAdminTtl(),
                 claims);
         log.info("生成的JWT令牌：" + token);
+        log.info("用户信息：{}" ,user);
         //3、返回实体对象
         return UserVO.builder()
                 .id(user.getId())

@@ -1,12 +1,14 @@
 import { createWebHashHistory, createRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE_URL } from '@/config/api'
-import MainLayout from '@/layouts/MainLayout.vue'
+import AdminLayout from '@/layouts/Admin.vue'
+import StudentLayout from '@/layouts/Student.vue'
 import Index from '@/pages/index.vue'
 import NotFound from '@/pages/common/NotFound.vue'
 import Square from '@/pages/forum/Square.vue'
 import ChatWindow from '@/pages/forum/ChatWindow.vue'
 import Users from '@/pages/system/Users.vue'
+import SystemProject from '@/pages/system/Project.vue'
 import Management from '@/pages/projects/Management.vue'
 import News from '@/pages/projects/News.vue'
 import NewsDetail from '@/pages/projects/NewsDetail.vue'
@@ -24,13 +26,14 @@ const routes = [
   { path: '/register', component: Register },
   {
     path: '/',
-    component: MainLayout,
+    component: AdminLayout,
     children: [
       { path: '', component: Index },
       { path: 'square', component: Square },
       { path: 'square/forum', component: Square },
       { path: 'square/chat', component: ChatWindow },
       { path: 'system/users', component: Users },
+      { path: 'system/project', component: SystemProject },
       { path: 'projects/management', component: Management },
       { path: 'projects/new', component: NewProject },
       { path: 'projects/detail/:id', component: ProjectDetail },
@@ -42,6 +45,30 @@ const routes = [
       { path: 'common/upload-test', component: UploadTest }
     ]
   },
+  {
+    path: '/student',
+    component: StudentLayout,
+    children: [
+      { path: '', redirect: '/student/projects/news' },
+      { path: 'projects/management', component: Management },
+      { path: 'projects/new', component: NewProject },
+      { path: 'square/forum', component: Square },
+      { path: 'square/chat', component: ChatWindow },
+      { path: 'projects/news', component: News },
+      { path: 'projects/news/detail/:type/:id', component: NewsDetail },
+      { path: 'projects/courses', component: Courses },
+      { path: 'projects/courses/:id', component: CoursesDetail },
+      { path: 'projects/courses/article/:id', component: ArticleDetail },
+      { path: 'projects/detail/:id', component: ProjectDetail },
+    ]
+  },
+  {
+    path: '/student/projects/detail/:id',
+    component: StudentLayout,
+    children: [
+      { path: '', component: ProjectDetail }
+    ]
+  },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
 ]
 
@@ -50,35 +77,87 @@ const router = createRouter({
   routes
 })
 
+const adminOnlyPaths = [
+  '/system',
+  '/projects/management',
+  '/projects/new',
+  '/projects/detail',
+  '/common/upload-test',
+]
+
+const studentAllowedPaths = [
+  '/student',
+  '/student/projects/management',
+  '/student/projects/new',
+  '/student/square/forum',
+  '/student/square/chat',
+  '/student/projects/news',
+  '/student/projects/news/detail',
+  '/student/projects/courses',
+  '/student/projects/courses/',
+  '/student/projects/courses/article/',
+  '/student/projects/detail/',
+  '/student/sf/ai',
+]
+
+function isPathMatched(path: string, rules: string[]) {
+  return rules.some((rule) => path === rule || path.startsWith(rule))
+}
+
+function isAllowedPathByRole(path: string, role: string) {
+  if (role === '学生') {
+    return isPathMatched(path, studentAllowedPaths)
+  }
+
+  if (role === '老师') {
+    return !isPathMatched(path, adminOnlyPaths)
+  }
+
+  return true
+}
+
+function isAdminOnlyPath(path: string) {
+  return isPathMatched(path, adminOnlyPaths)
+}
+
 router.beforeEach(async (to) => {
-  // 登录页和注册页允许直接访问
   if (to.path === '/login' || to.path === '/register') {
     return true
   }
 
-  // 1. 从本地存储读取 token，判断是否已登录
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token')
   if (!token) {
     return '/login'
   }
 
-  // 2. 调用后端校验接口，确认 token 是否有效
+  const role = sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || '学生'
+
+  if (!isAllowedPathByRole(to.path, role)) {
+    return role === '学生' ? '/student/projects/news' : '/'
+  }
+
+  if (role === '学生' && isAdminOnlyPath(to.path)) {
+    return '/student/projects/news'
+  }
+
   try {
     const response = await axios.get(`${API_BASE_URL}/admin/check`, {
       headers: {
-        // 后端配置的 token 请求头名为 token
         token
       }
     })
 
     if (response.data?.code !== 1) {
       localStorage.removeItem('token')
+      localStorage.removeItem('role')
+      localStorage.removeItem('userRole')
       return '/login'
     }
     return true
   } catch (error) {
-    // 校验接口异常时，视为未登录
     localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('userRole')
     return '/login'
   }
 })

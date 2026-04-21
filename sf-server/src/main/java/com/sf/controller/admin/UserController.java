@@ -24,8 +24,8 @@ public class UserController {
     @PostMapping("/login")
     public Result<UserVO> login(@RequestBody UserLoginDTO userLoginDTO) {
         log.info("角色登录: {}", userLoginDTO);
-        UserVO userLoginVO = userService.login(userLoginDTO);
-        return Result.success(userLoginVO);
+        UserVO userVO = userService.login(userLoginDTO);
+        return Result.success(userVO);
     }
 
     // 账号注册

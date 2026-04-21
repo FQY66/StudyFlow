@@ -2,6 +2,9 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.sf.mapper.ProjectMapper">
+    <delete id="delete">
+        delete from project_study where id = #{id}
+    </delete>
 
     <select id="pageQuery" resultType="com.sf.vo.ProjectStudyVO">
         select * from project_study
@@ -48,4 +51,21 @@
                                   click_count)
         values(#{coverPath}, #{theme}, #{introduction}, #{content}, #{category}, #{capacity}, #{status}, #{createTime}, #{updateTime},#{likeCount},#{clickCount})
     </insert>
+
+    <update id="update" parameterType="com.sf.entity.ProjectStudy">
+        update project_study
+        <set>
+            <if test="coverPath != null and coverPath != ''">cover_path = #{coverPath},</if>
+            <if test="theme != null and theme != ''">theme = #{theme},</if>
+            <if test="introduction != null and introduction != ''">introduction = #{introduction},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+            <if test="capacity != null">capacity = #{capacity},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateTime != null and updateTime != ''">update_time = #{updateTime},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            <if test="clickCount != null">click_count = #{clickCount},</if>
+        </set>
+        where id = #{id}
+    </update>
 </mapper>

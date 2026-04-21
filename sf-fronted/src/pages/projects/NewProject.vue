@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import Quill from 'quill'
 import 'quill/dist/quill.snow.css'
+import request from '@/utils/request'
 
 try {
   const SizeStyle = Quill.import('attributors/style/size') as any
@@ -46,11 +47,16 @@ const form = ref({
   summary: '',
   content: '',
   cover: '',
-  visible: true
+  capacity: 30
 })
+
+const coverFile = ref<File | null>(null)
+const uploading = ref(false)
 
 const editorRef = ref<HTMLDivElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const editorImageInputRef = ref<HTMLInputElement | null>(null)
+const isDragOver = ref(false)
 let quill: Quill | null = null
 let toolbarMouseOverHandler: ((event: Event) => void) | null = null
 let toolbarMouseOutHandler: ((event: Event) => void) | null = null
@@ -222,6 +228,9 @@ const quillModules = {
       ['clean']
     ],
     handlers: {
+      image: () => {
+        editorImageInputRef.value?.click()
+      },
       undo: () => {
         quill?.history.undo()
       },
@@ -247,7 +256,7 @@ onMounted(() => {
   })
 
   quill.on('text-change', () => {
-    form.value.content = quill?.root.innerHTML || ''
+    form.value.content = normalizeHtmlToRelativePaths(quill?.root.innerHTML || '')
   })
 
   bindInstantToolbarTips()
@@ -271,9 +280,30 @@ const onClickUpload = () => {
   fileInputRef.value?.click()
 }
 
-const onSelectCover = (event: Event) => {
+const onSelectEditorImage = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
+  if (!file) return
+
+  try {
+    await insertEditorImage(file)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '正文图片上传失败')
+  } finally {
+    target.value = ''
+  }
+}
+
+const clearCover = () => {
+  form.value.cover = ''
+  coverFile.value = null
+  isDragOver.value = false
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+const handleCoverFile = (file?: File) => {
   if (!file) return
 
   if (!file.type.startsWith('image/')) {
@@ -281,6 +311,7 @@ const onSelectCover = (event: Event) => {
     return
   }
 
+  coverFile.value = file
   const reader = new FileReader()
   reader.onload = () => {
     form.value.cover = String(reader.result || '')
@@ -288,7 +319,114 @@ const onSelectCover = (event: Event) => {
   reader.readAsDataURL(file)
 }
 
-const onPublish = () => {
+const onSelectCover = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  handleCoverFile(file)
+  target.value = ''
+}
+
+const onCoverDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = true
+}
+
+const onCoverDragLeave = () => {
+  isDragOver.value = false
+}
+
+const onCoverDrop = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+
+  const file = event.dataTransfer?.files?.[0]
+  handleCoverFile(file)
+}
+
+const uploadCover = async () => {
+  if (!coverFile.value) return ''
+
+  const formData = new FormData()
+  formData.append('file', coverFile.value)
+
+  const { data } = await request.post('/common/file/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+
+  if (data?.code !== 1) {
+    throw new Error(data?.msg || '封面上传失败')
+  }
+
+  return data.data?.path || data.data?.url || ''
+}
+
+const uploadImageFile = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const { data } = await request.post('/common/file/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+
+  if (data?.code !== 1) {
+    throw new Error(data?.msg || '图片上传失败')
+  }
+
+  return data.data?.path || data.data?.url || ''
+}
+
+const resolveFileUrl = (path: string) => {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path) || path.startsWith('data:')) return path
+  const base = import.meta.env.VITE_API_BASE_URL || ''
+  return path.startsWith('/') ? `${base}${path}` : `${base}/${path}`
+}
+
+const toRelativeFilePath = (src: string) => {
+  const base = import.meta.env.VITE_API_BASE_URL || ''
+  if (!src) return src
+  if (src.startsWith('data:')) return src
+  if (base && src.startsWith(base)) {
+    return src.slice(base.length).replace(/^\/+/, '/')
+  }
+  return src
+}
+
+const normalizeHtmlToRelativePaths = (html: string) => {
+  if (!html) return html
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  doc.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src') || ''
+    img.setAttribute('src', toRelativeFilePath(src))
+  })
+  return doc.body.innerHTML
+}
+
+const insertEditorImage = async (file: File) => {
+  if (!quill) return
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('请上传图片文件')
+    return
+  }
+
+  const path = await uploadImageFile(file)
+  if (!path) {
+    throw new Error('正文图片路径获取失败')
+  }
+
+  const src = resolveFileUrl(path)
+  const range = quill.getSelection(true)
+  const index = range ? range.index : quill.getLength()
+  quill.insertEmbed(index, 'image', src, 'user')
+  quill.setSelection(index + 1, 0)
+}
+
+const onPublish = async () => {
   if (!form.value.title.trim()) {
     ElMessage.warning('请输入项目主题')
     return
@@ -301,8 +439,41 @@ const onPublish = () => {
     ElMessage.warning('请填写项目内容')
     return
   }
+  if (!form.value.capacity || Number(form.value.capacity) < 1) {
+    ElMessage.warning('请设置报名容量')
+    return
+  }
 
-  ElMessage.success('发布成功（演示）')
+  uploading.value = true
+  try {
+    const coverPath = await uploadCover()
+    const payload = {
+      coverPath,
+      theme: form.value.title.trim(),
+      introduction: form.value.summary.trim(),
+      content: form.value.content,
+      category: form.value.category,
+      capacity: Number(form.value.capacity),
+      status: '审核中',
+      likeCount: 0,
+      clickCount: 0,
+      createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    }
+
+    const { data } = await request.post('/project/save', payload)
+    if (data?.code !== 1) {
+      ElMessage.error(data?.msg || '发布失败')
+      return
+    }
+
+    ElMessage.success('发布成功')
+    clearCover()
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '发布失败，请稍后再试')
+  } finally {
+    uploading.value = false
+  }
 }
 </script>
 
@@ -349,6 +520,13 @@ const onPublish = () => {
       </div>
 
       <div ref="editorRef" class="quill-editor" />
+      <input
+        ref="editorImageInputRef"
+        class="hidden-input"
+        type="file"
+        accept="image/*"
+        @change="onSelectEditorImage"
+      />
     </section>
 
     <section class="publish-card">
@@ -357,34 +535,79 @@ const onPublish = () => {
       <div class="cover-block">
         <span class="item-label">封面</span>
 
-        <div class="cover-upload" @click="onClickUpload">
-          <template v-if="form.cover">
-            <img :src="form.cover" alt="cover" class="cover-img" />
-          </template>
-          <template v-else>
-            <span class="upload-plus">+</span>
-            <span class="upload-text">点击此封面</span>
-          </template>
-        </div>
+        <div class="cover-uploader">
+          <div
+            class="cover-preview"
+            :class="{ 'has-image': !!form.cover, 'is-drag-over': isDragOver }"
+            @click="onClickUpload"
+            @dragover="onCoverDragOver"
+            @dragleave="onCoverDragLeave"
+            @drop="onCoverDrop"
+          >
+            <template v-if="form.cover">
+              <img :src="form.cover" alt="cover" class="cover-img" />
+            </template>
+            <template v-else>
+              <div class="cover-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="upload-icon">
+                  <path
+                    d="M7 10V9C7 6.23858 9.23858 4 12 4C14.7614 4 17 6.23858 17 9V10C19.2091 10 21 11.7909 21 14C21 15.4806 20.1956 16.8084 19 17.5M7 10C4.79086 10 3 11.7909 3 14C3 15.4806 3.8044 16.8084 5 17.5M7 10C7.43285 10 7.84965 10.0688 8.24006 10.1959M12 12V21M12 12L15 15M12 12L9 15"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <p class="upload-hint">拖拽或点击上传图片</p>
+              </div>
+            </template>
+          </div>
 
-        <input
-          ref="fileInputRef"
-          class="hidden-input"
-          type="file"
-          accept="image/*"
-          @change="onSelectCover"
-        />
+          <label class="file-footer" @click.prevent="onClickUpload">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" class="file-left-icon">
+              <path d="M15.331 6H8.5v20h15V14.154h-8.169z"></path>
+              <path d="M18.153 6h-.009v5.342H23.5v-.002z"></path>
+            </svg>
+            <p class="file-name">{{ form.cover ? '已选择封面文件' : '还未选择文件' }}</p>
+            <button v-if="form.cover" type="button" class="file-delete-btn" @click.stop="clearCover">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="trash-icon">
+                <path
+                  d="M5.16565 10.1534C5.07629 8.99181 5.99473 8 7.15975 8H16.8402C18.0053 8 18.9237 8.9918 18.8344 10.1534L18.142 19.1534C18.0619 20.1954 17.193 21 16.1479 21H7.85206C6.80699 21 5.93811 20.1954 5.85795 19.1534L5.16565 10.1534Z"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <path d="M19.5 5H4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M10 3C10 2.44772 10.4477 2 11 2H13C13.5523 2 14 2.44772 14 3V5H10V3Z" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </button>
+          </label>
+
+          <input
+            ref="fileInputRef"
+            class="hidden-input"
+            type="file"
+            accept="image/*"
+            @change="onSelectCover"
+          />
+        </div>
 
         <p class="cover-tip">建议尺寸 16:9，jpg/png 格式</p>
       </div>
 
-      <div class="visible-row">
-        <span class="item-label">可见</span>
-        <el-switch v-model="form.visible" />
+      <div class="capacity-block">
+        <span class="item-label">报名容量</span>
+        <el-input-number
+          v-model="form.capacity"
+          :min="1"
+          :max="99999"
+          controls-position="right"
+          class="capacity-input"
+        />
+        <p class="capacity-tip">请设置可报名人数上限，最少为 1 人</p>
       </div>
 
       <div class="action-row">
-        <el-button type="primary" @click="onPublish">发布</el-button>
+        <el-button type="primary" :loading="uploading" @click="onPublish">发布</el-button>
       </div>
     </section>
   </div>
@@ -749,38 +972,116 @@ const onPublish = () => {
   color: #606266;
 }
 
-.cover-upload {
-  width: 180px;
-  height: 110px;
-  border: 1px dashed #dcdfe6;
-  border-radius: 2px;
+.cover-uploader {
+  width: 100%;
+  max-width: 460px;
+}
+
+.cover-preview {
+  position: relative;
+  height: 280px;
+  width: 100%;
+  border: 2px dashed #d7dce6;
+  border-radius: 16px;
+  background: #fafbfe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.cover-preview:hover,
+.cover-preview.is-drag-over {
+  border-color: #7aa7ff;
+  background: #eef5ff;
+}
+
+.cover-preview.has-image {
+  border-style: solid;
+  border-color: #e6ebf4;
+  background: #fff;
+}
+
+.cover-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  color: #909399;
-  overflow: hidden;
+  gap: 28px;
+  width: 100%;
+  height: 100%;
+  color: #111;
 }
 
-.cover-upload:hover {
-  border-color: #409eff;
+.upload-icon {
+  height: 110px;
+  width: 110px;
+  color: #000;
+  flex: none;
 }
 
-.upload-plus {
-  font-size: 24px;
-  line-height: 1;
-}
-
-.upload-text {
-  margin-top: 6px;
-  font-size: 13px;
+.upload-hint {
+  text-align: center;
+  color: #111;
+  font-size: 18px;
+  margin: 0;
 }
 
 .cover-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+
+.file-footer {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: #eef3fb;
+  border: 1px solid #e2e8f3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.file-left-icon {
+  width: 22px;
+  height: 22px;
+  fill: #4c6ef5;
+  flex: none;
+}
+
+.file-name {
+  flex: 1;
+  text-align: center;
+  margin: 0;
+  font-size: 14px;
+  color: #111;
+}
+
+.file-delete-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #111;
+}
+
+.trash-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .hidden-input {
@@ -788,16 +1089,26 @@ const onPublish = () => {
 }
 
 .cover-tip {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #8a94a6;
+}
+
+.capacity-block {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.capacity-input {
+  width: 220px;
+}
+
+.capacity-tip {
   margin: 0;
   font-size: 12px;
   color: #909399;
-}
-
-.visible-row {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .action-row {

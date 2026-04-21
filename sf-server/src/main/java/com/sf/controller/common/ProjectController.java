@@ -1,16 +1,14 @@
 package com.sf.controller.common;
 
 import com.sf.dto.ProjectPageQueryDTO;
+import com.sf.entity.ProjectStudy;
 import com.sf.result.PageResult;
 import com.sf.result.Result;
 import com.sf.service.ProjectService;
 import com.sf.vo.ProjectStudyVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/project")
@@ -33,10 +31,24 @@ public class ProjectController {
         return Result.success(project);
     }
 
-//    @PutMapping("/signup")
-//    public Result<Void> signup(ProjectStudyDTO projectStudyDTO) {
-//        log.info("报名项目Controller层: {}", projectStudyDTO);
-//        projectService.insert(projectStudyDTO);
-//        return Result.success();
-//    }
+    @PostMapping("/save")
+    public Result save(@RequestBody ProjectStudy projectStudy) {
+        log.info("新增项目Controller层: {}", projectStudy);
+        projectService.insert(projectStudy);
+        return Result.success();
+    }
+
+    @PutMapping("/update")
+    public Result update(ProjectStudy projectStudy) {
+        log.info("更新项目Controller层: {}", projectStudy);
+        projectService.update(projectStudy);
+        return Result.success();
+    }
+
+    @DeleteMapping("/delete")
+    public Result delete(@RequestParam Integer id) {
+        log.info("删除项目Controller层: {}", id);
+        projectService.delete(id);
+        return Result.success();
+    }
 }

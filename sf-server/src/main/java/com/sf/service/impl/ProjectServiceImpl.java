@@ -44,4 +44,26 @@ public class ProjectServiceImpl implements ProjectService {
         }
         return project;
     }
+
+    @Override
+    public void insert(ProjectStudy projectStudy) {
+        log.info("新增项目Service层: {}", projectStudy);
+        //设置项目状态为待审核
+        projectStudy.setStatus("待审核");
+        projectStudy.setLikeCount(0);
+        projectStudy.setClickCount(0);
+        projectMapper.insert(projectStudy);
+    }
+
+    @Override
+    public void update(ProjectStudy projectStudy) {
+        log.info("更新项目Service层: {}", projectStudy);
+        projectMapper.update(projectStudy);
+    }
+
+    @Override
+    public void delete(Integer id) {
+        log.info("删除项目Service层: {}", id);
+        projectMapper.delete(id);
+    }
 }

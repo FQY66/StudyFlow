@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 
 interface ProjectCard {
@@ -29,8 +29,7 @@ interface ProjectStudyVO {
   clickCount?: number
 }
 
-const keyword = ref('')
-const activeYear = ref<'all' | number>('all')
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const projects = ref<ProjectCard[]>([])
@@ -38,6 +37,10 @@ const pagination = ref({
   page: 1,
   pageSize: 15,
   total: 0
+})
+
+const toolbarKeyword = computed(() => {
+  return typeof route.query.q === 'string' ? route.query.q.trim().toLowerCase() : ''
 })
 
 const toYear = (dateStr?: string) => {
@@ -86,32 +89,28 @@ onMounted(() => {
   loadProjects()
 })
 
-watch([keyword, activeYear], () => {
-  pagination.value.page = 1
-})
-
-const yearOptions = computed(() => {
-  const years = Array.from(new Set(projects.value.map(p => p.year))).sort(
-    (a, b) => b - a
-  )
-  return years
-})
-
 const filteredProjects = computed(() => {
-  return projects.value.filter(p => {
-    const matchYear =
-      activeYear.value === 'all' ? true : p.year === activeYear.value
-    const kw = keyword.value.trim().toLowerCase()
-    const matchKeyword = !kw
-      ? true
-      : p.title.toLowerCase().includes(kw) ||
-        p.category.toLowerCase().includes(kw)
-    return matchYear && matchKeyword
+  const kw = toolbarKeyword.value
+  return projects.value.filter((p) => {
+    if (!kw) return true
+    return (
+      p.title.toLowerCase().includes(kw) ||
+      p.category.toLowerCase().includes(kw)
+    )
   })
 })
 
+watch(
+  () => route.query.q,
+  () => {
+    pagination.value.page = 1
+  }
+)
+
 const handleCardClick = (project: ProjectCard) => {
-  router.push(`/projects/detail/${project.id}`)
+  const isStudentView = route.path.startsWith('/student')
+  const detailPath = isStudentView ? `/student/projects/detail/${project.id}` : `/projects/detail/${project.id}`
+  router.push(detailPath)
 }
 
 const handleCurrentChange = async (page: number) => {
@@ -128,43 +127,6 @@ const handleSizeChange = async (size: number) => {
 
 <template>
   <div class="project-page">
-    <header class="project-header">
-      <el-input
-        v-model="keyword"
-        class="search-input"
-        placeholder="输入项目名称或类别进行搜索"
-        clearable
-        
-      />
-
-      <div class="header-right">
-        <div class="year-tabs">
-          <!-- <button
-            class="year-tab"
-            :class="{ active: activeYear === 'all' }"
-            type="button"
-            @click="activeYear = 'all'"
-          >
-            All
-          </button>
-          <button
-            v-for="year in yearOptions"
-            :key="year"
-            class="year-tab"
-            :class="{ active: activeYear === year }"
-            type="button"
-            @click="activeYear = year"
-          >
-            {{ year }}
-          </button> -->
-        </div>
-
-        <!-- <el-button type="primary" @click="handleCreate" plain class="btn-post">
-          新建项目
-        </el-button> -->
-      </div>
-    </header>
-
     <main v-loading="loading" class="card-grid">
       <article
         v-for="project in filteredProjects"
@@ -223,72 +185,44 @@ const handleSizeChange = async (size: number) => {
 
 <style scoped>
 .project-page {
-  padding: 10px 8px 8px;
-  transform: scale(0.96);
-  transform-origin: top center;
-}
-
-.project-header {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px 8px 8px;
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
-.search-input {
-  flex: 1;
-
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.year-tabs {
-  display: flex;
-  gap: 8px;
-  background-color: #f5f7fa;
-  border-radius: 999px;
-  padding: 4px;
-}
-
-.year-tab {
-  border: none;
-  background: transparent;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  color: #606266;
-  cursor: pointer;
-}
-
-.year-tab.active {
-  background-color: #2f43db7e;
-  color: #fff;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-  min-height: 240px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
+  grid-auto-rows: minmax(250px, auto);
+  padding-right: 4px;
 }
 
 .project-card {
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 14px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  height: 100%;
+  min-height: 250px;
 }
+
 .project-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 
 .empty-state {
@@ -303,8 +237,10 @@ const handleSizeChange = async (size: number) => {
 .cover-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 56%;
+  padding-top: 52%;
+  min-height: 140px;
   overflow: hidden;
+  flex: none;
 }
 
 .cover-img {
@@ -327,28 +263,41 @@ const handleSizeChange = async (size: number) => {
 }
 
 .card-body {
-  padding: 10px 12px 8px;
+  padding: 12px 14px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .card-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   color: #303133;
+  line-height: 1.4;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-footer {
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: #909399;
+  min-height: 20px;
 }
 
 .meta-left {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .meta-item {
@@ -360,26 +309,12 @@ const handleSizeChange = async (size: number) => {
 .meta-dot {
   opacity: 0.6;
 }
-.btn-post {
-  border-radius: 12px !important;
-}
-
-.btn-post:hover,
-.btn-post.is-plain:hover {
-  background-color: rgba(85, 45, 188, 0.409) !important;
-  border-color: rgba(34, 36, 37, 0.2) !important;
-}
-
-.btn-post:active,
-.btn-post.is-plain:active {
-  background-color: rgba(10, 118, 226, 0.2) !important;
-  border-color: rgba(64, 158, 255, 0.25) !important;
-}
 
 .pagination-wrap {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px;
+  margin-top: 10px;
+  flex: none;
+  padding-bottom: 2px;
 }
 </style>
-
