@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 public interface ProjectService {
     PageResult pageQuery(ProjectPageQueryDTO projectPageQueryDTO);
 
+    java.util.List<String> getCategories();
+
     ProjectStudyVO getById(Integer id);
 
     void insert(ProjectStudy projectStudy);
@@ -17,4 +19,10 @@ public interface ProjectService {
     void update(ProjectStudy projectStudy);
 
     void delete(Integer id);
+
+    void signup(Integer projectId, Integer userId);
+
+    void approveSignup(Integer projectId, Integer userId);
+
+    void cancelSignup(Integer projectId, Integer userId);
 }

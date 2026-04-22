@@ -5,18 +5,34 @@
     <delete id="delete">
         delete from project_study where id = #{id}
     </delete>
+    <delete id="cancelSignup">
+        delete from project_signup where user_id = #{userId} and project_id = #{projectId}
+    </delete>
 
     <select id="pageQuery" resultType="com.sf.vo.ProjectStudyVO">
-        select * from project_study
+        select ps.*, count(case when sg.status != '已通过' then 1 end) as pendingSignupCount
+        from project_study ps
+        left join project_signup sg on ps.id = sg.project_id
         <where>
             <if test="theme != null and theme != ''">
-                and theme like concat('%',#{theme},'%')
+                and ps.theme like concat('%',#{theme},'%')
             </if>
             <if test="category != null and category != ''">
-                and category = #{category}
+                and ps.category = #{category}
+            </if>
+            <if test="pendingFilter != null and pendingFilter == 'statusPending'">
+                and ps.status = '待审核'
+            </if>
+            <if test="pendingFilter != null and pendingFilter == 'hasPendingUsers'">
+                and exists (
+                    select 1 from project_signup psg
+                    where psg.project_id = ps.id
+                      and psg.status != '已通过'
+                )
             </if>
         </where>
-        order by id asc
+        group by ps.id
+        order by pendingSignupCount desc, ps.status desc, ps.update_time desc
     </select>
 
     <select id="getById" resultType="com.sf.vo.ProjectStudyVO">
@@ -25,16 +41,23 @@
         where id = #{id}
     </select>
 
-    <select id="getSignupByProjectId" resultType="com.sf.vo.UserVO">
-        select u.id,
-               u.username,
+    <select id="getCategories" resultType="java.lang.String">
+        select distinct category
+        from project_study
+        where category is not null and category != ''
+        order by category
+    </select>
+
+    <select id="getSignupByProjectId" resultType="com.sf.vo.ProjectSignupUserVO">
+        select u.id as userId,
                u.name,
                u.role,
                u.avatar,
-               u.email,
-               u.phone,
-               u.sex
-        from project_signup as ps join user as u on ps.user_id = u.id where ps.project_id=#{projectId};
+               ps.status,
+               ps.remark,
+               ps.create_time
+        from project_signup as ps join user as u on ps.user_id = u.id where ps.project_id=#{projectId}
+        order by ps.status desc;
     </select>
 
     <insert id="insert" parameterType="com.sf.entity.ProjectStudy">
@@ -51,6 +74,16 @@
                                   click_count)
         values(#{coverPath}, #{theme}, #{introduction}, #{content}, #{category}, #{capacity}, #{status}, #{createTime}, #{updateTime},#{likeCount},#{clickCount})
     </insert>
+    <insert id="signup">
+        insert into project_signup(user_id, project_id, status, create_time)
+        values(#{userId}, #{projectId}, #{status}, #{createTime})
+    </insert>
+
+    <update id="approveSignup">
+        update project_signup
+        set status = '已通过'
+        where project_id = #{projectId} and user_id = #{userId}
+    </update>
 
     <update id="update" parameterType="com.sf.entity.ProjectStudy">
         update project_study

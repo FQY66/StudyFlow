@@ -14,4 +14,9 @@ public class ProjectPageQueryDTO extends PageQueryDTO implements Serializable{
     private String theme;
 
     private String category;
+
+    /**
+     * all / statusPending / hasPendingUsers
+     */
+    private String pendingFilter;
 }

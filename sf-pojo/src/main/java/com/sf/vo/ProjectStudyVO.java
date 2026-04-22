@@ -42,5 +42,5 @@ public class ProjectStudyVO {
     private Integer clickCount;
 
     //报名用户列表
-    private List<UserVO> projectSignupList;
+    private List<ProjectSignupUserVO> projectSignupList;
 }

@@ -3,6 +3,7 @@ package com.sf.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sf.dto.ProjectPageQueryDTO;
+import com.sf.entity.ProjectSignup;
 import com.sf.entity.ProjectStudy;
 import com.sf.mapper.ProjectMapper;
 import com.sf.result.PageResult;
@@ -36,6 +37,11 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    public List<String> getCategories() {
+        return projectMapper.getCategories();
+    }
+
+    @Override
     public ProjectStudyVO getById(Integer id) {
         log.info("根据id查询项目Service层: {}", id);
         ProjectStudyVO project = projectMapper.getById(id);
@@ -65,5 +71,27 @@ public class ProjectServiceImpl implements ProjectService {
     public void delete(Integer id) {
         log.info("删除项目Service层: {}", id);
         projectMapper.delete(id);
+    }
+
+    @Override
+    public void signup(Integer projectId, Integer userId) {
+        log.info("报名项目Service层: projectId={}, userId={}", projectId, userId);
+        ProjectSignup projectSignup = new ProjectSignup();
+        projectSignup.setProjectId(Long.valueOf(projectId));
+        projectSignup.setUserId(Long.valueOf(userId));
+        projectSignup.setStatus("待审核");
+        projectMapper.signup(projectSignup);
+    }
+
+    @Override
+    public void approveSignup(Integer projectId, Integer userId) {
+        log.info("审核通过报名Service层: projectId={}, userId={}", projectId, userId);
+        projectMapper.approveSignup(projectId, userId);
+    }
+
+    @Override
+    public void cancelSignup(Integer projectId, Integer userId) {
+        log.info("取消报名项目Service层: projectId={}, userId={}", projectId, userId);
+        projectMapper.cancelSignup(projectId, userId);
     }
 }

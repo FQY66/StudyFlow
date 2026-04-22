@@ -483,8 +483,8 @@ const onPublish = async () => {
       <div class="top-row">
         <el-input
           v-model="form.title"
-          placeholder="请输入项目主题（最多100个字符）"
-          maxlength="100"
+          placeholder="请输入项目主题（最多20个字符）"
+          maxlength="20"
           show-word-limit
           class="title-input"
         />
@@ -607,7 +607,7 @@ const onPublish = async () => {
       </div>
 
       <div class="action-row">
-        <el-button type="primary" :loading="uploading" @click="onPublish">发布</el-button>
+        <el-button type="primary" class="sf-btn" :loading="uploading" @click="onPublish">发布</el-button>
       </div>
     </section>
   </div>

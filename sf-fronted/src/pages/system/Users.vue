@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, DeleteFilled, CircleCloseFilled, CircleCheckFilled } from '@element-plus/icons-vue'
+import { DeleteFilled, CircleCloseFilled, CircleCheckFilled } from '@element-plus/icons-vue'
+import { EditorIcon,BanIcon, DeleteIcon } from '@/components/icons'
 import request from '@/utils/request'
 
 interface UserRow {
@@ -159,7 +160,7 @@ const handleReset = async () => {
   await fetchUsers()
 }
 
-const handleExport = () => {}
+
 
 const handleEdit = (row: UserRow) => {
   editForm.value = {
@@ -208,7 +209,8 @@ const handleDelete = async (row: UserRow) => {
     await ElMessageBox.confirm(`确认删除用户「${row.name}」吗？`, '删除确认', {
       type: 'warning',
       confirmButtonText: '删除',
-      cancelButtonText: '取消'
+      cancelButtonText: '取消',
+      customClass: 'sf-confirm-box sf-confirm-box--danger'
     })
 
     const data = await handleDeleteById(row.id)
@@ -232,7 +234,8 @@ const handleToggleStatus = async (row: UserRow) => {
     await ElMessageBox.confirm(`确认${actionText}用户「${row.name}」吗？`, `${actionText}确认`, {
       type: 'warning',
       confirmButtonText: '确认',
-      cancelButtonText: '取消'
+      cancelButtonText: '取消',
+      customClass: 'sf-confirm-box sf-confirm-box--status'
     })
 
     const payload: UserUpdateDTO = {
@@ -267,7 +270,8 @@ const handleBatchDisable = async () => {
     await ElMessageBox.confirm(`确认禁用选中的 ${selectedRows.value.length} 个账号吗？`, '批量禁用确认', {
       type: 'warning',
       confirmButtonText: '确认',
-      cancelButtonText: '取消'
+      cancelButtonText: '取消',
+      customClass: 'sf-confirm-box sf-confirm-box--status'
     })
 
     let successCount = 0
@@ -299,7 +303,8 @@ const handleBatchDelete = async () => {
     await ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 个用户吗？此操作不可恢复`, '批量删除确认', {
       type: 'warning',
       confirmButtonText: '确认删除',
-      cancelButtonText: '取消'
+      cancelButtonText: '取消',
+      customClass: 'sf-confirm-box sf-confirm-box--danger'
     })
 
     let successCount = 0
@@ -376,8 +381,8 @@ onMounted(() => {
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" plain class="btn-post">查询</el-button>
-          <el-button  @click="handleReset" plain class="btn-common">重置</el-button>
+          <el-button type="primary" class="sf-btn" @click="handleSearch">查询</el-button>
+          <el-button class="sf-btn is-plain" @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -386,20 +391,16 @@ onMounted(() => {
       <div class="toolbar">
         <div class="toolbar-left">
           <!-- <el-button type="primary" @click="handleAdd" plain class="btn-post">新建用户</el-button> -->
-          <el-button @click="handleExport" class="btn-common" plain>导出</el-button>
+          <!-- <el-button class="sf-btn is-plain" @click="handleExport">导出</el-button> -->
           <el-button
-          type="danger"
-          plain
-            class="btn-post"
+            type="danger"
             :disabled="!selectedRows.length"
             @click="handleBatchDisable"
           >
             批量禁用
           </el-button>
           <el-button
-          type="danger"
-          plain
-            class="btn-post"
+            type="danger"
             :disabled="!selectedRows.length"
             @click="handleBatchDelete"
           >
@@ -466,9 +467,11 @@ onMounted(() => {
                 size="small"
                 @click="handleEdit(row)"
               >
+              
                 <el-icon size="20">
-                  <Edit />
+                  <EditorIcon />
                 </el-icon>
+
               </el-button>
             </el-tooltip>
 
@@ -480,7 +483,7 @@ onMounted(() => {
                 size="small"
                 @click="handleToggleStatus(row)"
               >
-                <el-icon size="20">
+                <el-icon size="25">
                   <CircleCloseFilled v-if="row.status === '正常'" />
                   <CircleCheckFilled v-else />
                 </el-icon>
@@ -496,7 +499,7 @@ onMounted(() => {
                 @click="handleDelete(row)"
               >
                 <el-icon size="20">
-                  <DeleteFilled />
+                  <DeleteIcon />
                 </el-icon>
               </el-button>
             </el-tooltip>
@@ -555,8 +558,8 @@ onMounted(() => {
         </el-form>
 
         <div class="edit-footer">
-          <el-button class="cancel-btn" @click="editDialogVisible = false">取消</el-button>
-          <el-button class="save-btn" :loading="editLoading" @click="submitEdit">保存</el-button>
+          <el-button class="sf-btn is-plain cancel-btn" @click="editDialogVisible = false">取消</el-button>
+          <el-button class="sf-btn save-btn" :loading="editLoading" @click="submitEdit">保存</el-button>
         </div>
       </div>
     </el-dialog>
@@ -627,36 +630,11 @@ onMounted(() => {
   margin-left: 8px;
 }
 
-.btn-post {
-  border-radius: 12px !important;
-}
-.btn-common{
-  border-radius: 12px !important;
-}
-.btn-common:hover,
-.btn-common.is-plain:hover {
-  background-color: rgba(85, 45, 188, 0.409) !important;
-  border-color: rgba(34, 36, 37, 0.2) !important;
-}
-.btn-post:hover,
-.btn-post.is-plain:hover {
-  background-color: rgba(85, 45, 188, 0.409) !important;
-  border-color: rgba(34, 36, 37, 0.2) !important;
+.cancel-btn,
+.save-btn {
+  border-radius: 14px;
 }
 
-.btn-post:active,
-.btn-post.is-plain:active {
-  background-color: rgba(10, 118, 226, 0.2) !important;
-  border-color: rgba(64, 158, 255, 0.25) !important;
-}
-
-.btn-post.is-disabled,
-.btn-post.is-disabled:hover,
-.btn-post.is-disabled:focus {
-  color: #d46b6b !important;
-  border-color: #e6b8b8 !important;
-  background-color: #fff2f2 !important;
-}
 
 :deep(.user-edit-dialog .el-dialog) {
   border-radius: 24px;

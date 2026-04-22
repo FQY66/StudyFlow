@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { likeIcon, shareIcon } from '@/components/icons'
 import request from '@/utils/request'
+
+interface ProjectSignupUser {
+  id?: number
+  userId?: number
+  userName?: string
+  nickname?: string
+  realName?: string
+  avatar?: string
+  createTime?: string
+  [key: string]: unknown
+}
 
 interface ProjectStudyVO {
   id: number
@@ -17,15 +29,43 @@ interface ProjectStudyVO {
   updateTime?: string
   likeCount?: number
   clickCount?: number
-  projectSignupList?: Array<Record<string, unknown>>
+  projectSignupList?: ProjectSignupUser[]
 }
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const joining = ref(false)
 const project = ref<ProjectStudyVO | null>(null)
 
 const id = computed(() => String(route.params.id ?? ''))
+const currentUserId = computed(() => {
+  const candidates = [
+    sessionStorage.getItem('id'),
+    localStorage.getItem('id'),
+    sessionStorage.getItem('userId'),
+    localStorage.getItem('userId')
+  ]
+  const value = candidates.find((item) => item && item !== 'undefined' && item !== 'null')
+  return value ? Number(value) : 0
+})
+const currentUserRole = computed(() => sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || '')
+
+const hasSignedUp = computed(() => {
+  if (!project.value?.projectSignupList?.length || !currentUserId.value) return false
+  return project.value.projectSignupList.some((user) => Number(user.userId || user.id) === currentUserId.value)
+})
+
+const joinButtonText = computed(() => {
+  if (currentUserRole.value && currentUserRole.value !== '学生') return '仅学生可报名'
+  if (hasSignedUp.value) return '已报名'
+  if (project.value?.status && project.value.status !== '已发布') return '暂不可报名'
+  return '我要报名'
+})
+
+const joinButtonDisabled = computed(() => {
+  return joining.value || !!currentUserRole.value && currentUserRole.value !== '学生' || hasSignedUp.value || project.value?.status !== '已发布'
+})
 
 const resolveFileUrl = (path?: string) => {
   if (!path) return 'https://picsum.photos/seed/sf-project-detail/1200/520'
@@ -65,6 +105,48 @@ const loadDetail = async () => {
   }
 }
 
+const handleJoinProject = async () => {
+  if (!project.value) return
+  if (currentUserRole.value && currentUserRole.value !== '学生') {
+    ElMessage.warning('只有学生身份才能报名项目')
+    return
+  }
+  if (!currentUserId.value) {
+    ElMessage.warning('请先登录后再报名')
+    return
+  }
+  if (project.value.status && project.value.status !== '已发布') {
+    ElMessage.warning('当前项目暂不可报名')
+    return
+  }
+  if (hasSignedUp.value) {
+    ElMessage.info('你已经报名过该项目了')
+    return
+  }
+
+  joining.value = true
+  try {
+    const { data } = await request.post('/project/signup', null, {
+      params: {
+        projectId: project.value.id,
+        userId: currentUserId.value
+      }
+    })
+
+    if (data?.code !== 1) {
+      ElMessage.error(data?.msg || '报名失败')
+      return
+    }
+
+    ElMessage.success('报名成功，等待审核')
+    await loadDetail()
+  } catch {
+    ElMessage.error('报名失败，请稍后再试')
+  } finally {
+    joining.value = false
+  }
+}
+
 onMounted(() => {
   loadDetail()
 })
@@ -101,7 +183,6 @@ watch(
               <span>浏览量：{{ project.clickCount ?? 0 }}</span>
               <span>点赞数：{{ project.likeCount ?? 0 }}</span>
               <span>报名上限：{{ project.capacity ?? '-' }}</span>
-              <span>已报名人数：{{ project.projectSignupList?.length || 0 }} 人</span>
             </div>
 
             <section class="article-block">
@@ -114,8 +195,8 @@ watch(
             </section>
 
             <div class="project-actions">
-              <button class="join-button" type="button">
-                我要报名
+              <button class="join-button" type="button" :disabled="joinButtonDisabled" @click="handleJoinProject">
+                {{ joining ? '报名中...' : joinButtonText }}
               </button>
               <div class="project-actions-right">
                 <button class="icon-action-button type-like" type="button" aria-label="收藏">
@@ -232,18 +313,24 @@ watch(
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(22, 119, 255, 0.2);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
 }
 
-.join-button:hover {
+.join-button:hover:not(:disabled) {
   transform: translate(-50%, -50%) translateY(-1px);
   background: #0f66e6;
   box-shadow: 0 8px 16px rgba(22, 119, 255, 0.24);
 }
 
-.join-button:active {
+.join-button:active:not(:disabled) {
   transform: translate(-50%, -50%) translateY(1px);
   box-shadow: 0 4px 10px rgba(22, 119, 255, 0.18);
+}
+
+.join-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
 }
 
 .project-actions-right {
@@ -322,6 +409,45 @@ watch(
 
 .article-body-block {
   margin-top: 34px;
+}
+
+.signup-block {
+  margin-top: 30px;
+}
+
+.signup-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.signup-user-card {
+  border-radius: 12px;
+}
+
+.signup-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.signup-user-info {
+  min-width: 0;
+}
+
+.signup-user-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.signup-user-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .article-body {

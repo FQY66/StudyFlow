@@ -59,62 +59,62 @@
   --color: #f56c6c;
 }
 
-/* From Uiverse.io by vinodjangid07 */ 
+/* From Uiverse.io by vinodjangid07 */
 .button {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background-color: rgb(20, 20, 20);
-    border: none;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
-    cursor: pointer;
-    transition-duration: .3s;
-    overflow: hidden;
-    position: relative;
-  }
-  
-  .svgIcon {
-    width: 12px;
-    transition-duration: .3s;
-  }
-  
-  .svgIcon path {
-    fill: white;
-  }
-  
-  .button:hover {
-    width: 140px;
-    border-radius: 50px;
-    transition-duration: .3s;
-    background-color: rgb(255, 69, 69);
-    align-items: center;
-  }
-  
-  .button:hover .svgIcon {
-    width: 50px;
-    transition-duration: .3s;
-    transform: translateY(60%);
-  }
-  
-  .button::before {
-    position: absolute;
-    top: -20px;
-    content: "Delete";
-    color: white;
-    transition-duration: .3s;
-    font-size: 2px;
-  }
-  
-  .button:hover::before {
-    font-size: 13px;
-    opacity: 1;
-    transform: translateY(30px);
-    transition-duration: .3s;
-  }
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: rgb(20, 20, 20);
+  border: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+  cursor: pointer;
+  transition-duration: 0.3s;
+  overflow: hidden;
+  position: relative;
+}
+
+.svgIcon {
+  width: 12px;
+  transition-duration: 0.3s;
+}
+
+.svgIcon path {
+  fill: white;
+}
+
+.button:hover {
+  width: 140px;
+  border-radius: 50px;
+  transition-duration: 0.3s;
+  background-color: rgb(255, 69, 69);
+  align-items: center;
+}
+
+.button:hover .svgIcon {
+  width: 50px;
+  transition-duration: 0.3s;
+  transform: translateY(60%);
+}
+
+.button::before {
+  position: absolute;
+  top: -20px;
+  content: 'Delete';
+  color: white;
+  transition-duration: 0.3s;
+  font-size: 2px;
+}
+
+.button:hover::before {
+  font-size: 13px;
+  opacity: 1;
+  transform: translateY(30px);
+  transition-duration: 0.3s;
+}
 
 /* Pagination button style reused across pages */
 .custom-pagination .btn-prev,
@@ -149,4 +149,116 @@
 .custom-pagination .el-pager li:hover {
   transform: translateY(-1px);
   background: #c7c3c0;
+}
+
+/* Reusable button style */
+.sf-btn {
+  min-width: 88px;
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #6f93ff 0%, #5b80ff 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 6px 14px rgba(91, 128, 255, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+/* Confirm dialog style matching the screenshot */
+.sf-confirm-box {
+  border-radius: 48px;
+  padding: 10px 10px 6px;
+  overflow: hidden;
+}
+
+.sf-confirm-box .el-message-box__header {
+  padding: 16px 20px 0;
+}
+
+.sf-confirm-box .el-message-box__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.sf-confirm-box .el-message-box__headerbtn {
+  top: 18px;
+  right: 18px;
+  font-size: 20px;
+}
+
+.sf-confirm-box .el-message-box__content {
+  padding: 14px 20px 22px;
+}
+
+.sf-confirm-box .el-message-box__container {
+  align-items: flex-start;
+}
+
+.sf-confirm-box .el-message-box__status {
+  font-size: 30px !important;
+  margin-right: 12px;
+}
+
+.sf-confirm-box .el-message-box__message {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #606266;
+}
+
+.sf-confirm-box .el-message-box__btns {
+  padding: 0 20px 20px;
+  gap: 10px;
+}
+
+.sf-confirm-box .el-message-box__btns .el-button {
+  min-width: 86px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sf-confirm-box--danger .el-message-box__status,
+.sf-confirm-box--danger .el-message-box__icon {
+  color: #ff8f70;
+}
+
+.sf-confirm-box--danger .el-message-box__btns .el-button--primary {
+  background: linear-gradient(180deg, #5a98ff 0%, #4b7dff 100%);
+  border-color: #4b7dff;
+}
+
+.sf-confirm-box--status .el-message-box__status,
+.sf-confirm-box--status .el-message-box__icon {
+  color: #f7b44b;
+}
+
+.sf-btn:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(91, 128, 255, 0.26);
+}
+
+.sf-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(91, 128, 255, 0.18);
+}
+
+.sf-btn:focus-visible {
+  outline: 2px solid rgba(91, 128, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.sf-btn.is-plain {
+  background: #eef3ff;
+  color: #5b80ff;
+  border: 1px solid rgba(91, 128, 255, 0.25);
+  box-shadow: none;
+}
+
+.sf-btn.is-plain:hover {
+  background: #e4ebff;
 }

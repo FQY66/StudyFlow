@@ -8,6 +8,7 @@ import NotFound from '@/pages/common/NotFound.vue'
 import Square from '@/pages/forum/Square.vue'
 import ChatWindow from '@/pages/forum/ChatWindow.vue'
 import Users from '@/pages/system/Users.vue'
+import UserDetail from '@/pages/system/UserDetail.vue'
 import SystemProject from '@/pages/system/Project.vue'
 import Management from '@/pages/projects/Management.vue'
 import News from '@/pages/projects/News.vue'
@@ -33,6 +34,7 @@ const routes = [
       { path: 'square/forum', component: Square },
       { path: 'square/chat', component: ChatWindow },
       { path: 'system/users', component: Users },
+      { path: 'system/users/detail', component: UserDetail },
       { path: 'system/project', component: SystemProject },
       { path: 'projects/management', component: Management },
       { path: 'projects/new', component: NewProject },
