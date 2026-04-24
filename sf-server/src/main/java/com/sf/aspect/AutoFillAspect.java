@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+
 @Aspect
 @Component
 @Slf4j
@@ -36,35 +37,37 @@ public class AutoFillAspect {
         Object entity = args[0];
 
         LocalDateTime now = LocalDateTime.now();
+        String nowText = now.toString();
         Long currentId = BaseContext.getCurrentId();
 
         if (operationType == OperationType.INSERT) {
             try {
-                try{
-                    Method setCreateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class);
-                    setCreateTime.invoke(entity,now);
-
-                }catch(NoSuchMethodException e){
-                    log.warn("实体类{}没有setCreateTime方法，跳过该字段的填充", entity.getClass().getName());
-                }
-
-                try{
-                    Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
-                    setUpdateTime.invoke(entity,now);
-                }catch (NoSuchMethodException e){
-                    log.warn("实体类{}没有setUpdateTime方法，跳过该字段的填充", entity.getClass().getName());
-                }
+                invokeSetter(entity, AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class, now);
+                invokeSetter(entity, AutoFillConstant.SET_CREATE_TIME, String.class, nowText);
+                invokeSetter(entity, AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class, now);
+                invokeSetter(entity, AutoFillConstant.SET_UPDATE_TIME, String.class, nowText);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         if (operationType == OperationType.UPDATE) {
             try {
-                Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
-                setUpdateTime.invoke(entity,now);
+                invokeSetter(entity, AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class, now);
+                invokeSetter(entity, AutoFillConstant.SET_UPDATE_TIME, String.class, nowText);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void invokeSetter(Object entity, String methodName, Class<?> paramType, Object value) {
+        try {
+            Method method = entity.getClass().getDeclaredMethod(methodName, paramType);
+            method.invoke(entity, value);
+        } catch (NoSuchMethodException e) {
+            log.warn("实体类{}没有{}({})方法，跳过该字段的填充", entity.getClass().getName(), methodName, paramType.getSimpleName());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }

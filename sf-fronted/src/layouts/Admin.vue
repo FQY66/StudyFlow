@@ -7,7 +7,6 @@ import {
   Tickets,
   User,
   Folder,
-  Plus,
   InfoFilled,
   Collection,
   Files,
@@ -19,7 +18,7 @@ import {
   SwitchButton,
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
-import { AiRobotIcon, chatIcon, forumIcon, lanchIcon, projectIcon, squareIcon } from '@/components/icons'
+import { AiRobotIcon, chatIcon, forumIcon, lanchIcon, projectIcon, squareIcon,CourseManagementIcon,CourseListIcon, CourseLanchIcon, NewsManagementIcon } from '@/components/icons'
 
 const route = useRoute()
 const router = useRouter()
@@ -38,12 +37,12 @@ const formatAvatar = (value: string) => {
 }
 
 const userAvatar = computed(() => {
-  const manualAvatar = localStorage.getItem('avatar')
+  const manualAvatar = sessionStorage.getItem('avatar') || localStorage.getItem('avatar')
   if (manualAvatar) return formatAvatar(manualAvatar)
 
   const keys = ['avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
   for (const key of keys) {
-    const value = localStorage.getItem(key)
+    const value = sessionStorage.getItem(key) || localStorage.getItem(key)
     if (value) return formatAvatar(value)
   }
 
@@ -51,11 +50,11 @@ const userAvatar = computed(() => {
 })
 
 const userName = computed(() => {
-  return localStorage.getItem('nickname') || localStorage.getItem('name') || localStorage.getItem('username') || 'AD'
+  return sessionStorage.getItem('nickname') || sessionStorage.getItem('name') || sessionStorage.getItem('username') || localStorage.getItem('nickname') || localStorage.getItem('name') || localStorage.getItem('username') || 'AD'
 })
 
 const userRole = computed(() => {
-  const role = localStorage.getItem('role') || sessionStorage.getItem('role') || ''
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role') || ''
   const roleMap: Record<string, string> = {
     student: '学生',
     teacher: '老师',
@@ -78,9 +77,13 @@ const routeTitle = computed(() => {
     '/projects/new': '新增项目',
     '/projects/info': '研学资讯',
     '/projects/courses': '精品课程',
+    '/projects/courses/create': '新增精品课程',
+    '/projects/news/create': '新增资讯',
     '/common/upload-test': '测试栏',
     '/system/users': '用户管理',
     '/system/project': '项目管理',
+    '/system/news': '资讯管理',
+    '/system/courses': '课程管理',
   }
   return map[path] || '首页总览'
 })
@@ -105,6 +108,15 @@ const logout = async () => {
       confirmButtonText: '退出',
       cancelButtonText: '取消'
     })
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('userRole')
+    sessionStorage.removeItem('avatar')
+    sessionStorage.removeItem('avatarUrl')
+    sessionStorage.removeItem('headImg')
+    sessionStorage.removeItem('headimg')
+    sessionStorage.removeItem('photo')
+    sessionStorage.removeItem('picture')
     localStorage.removeItem('token')
     localStorage.removeItem('role')
     localStorage.removeItem('avatar')
@@ -168,10 +180,22 @@ const logout = async () => {
           <el-icon><InfoFilled /></el-icon>
           <span>研学资讯</span>
         </el-menu-item>
-        <el-menu-item index="/projects/courses">
-          <el-icon><Collection /></el-icon>
-          <span>精品课程</span>
-        </el-menu-item>
+        <el-sub-menu index="/projects/courses">
+          <template #title>
+            <el-icon><Collection /></el-icon>
+            <span>精品课程</span>
+          </template>
+          <el-menu-item index="/projects/courses">
+            <el-icon>
+              <CourseListIcon />
+            </el-icon>
+            <span>课程列表</span>
+          </el-menu-item>
+          <el-menu-item index="/projects/courses/create">
+            <el-icon><CourseLanchIcon /></el-icon>
+            <span>课程发布</span>
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/common/upload-test">
           <el-icon><Files /></el-icon>
           <span>测试栏</span>
@@ -197,6 +221,18 @@ const logout = async () => {
             </el-icon>
             项目管理
           </el-menu-item>
+          <el-menu-item index="/system/news">
+            <el-icon><NewsManagementIcon /></el-icon>
+            资讯管理
+          </el-menu-item>
+          <el-menu-item index="/system/courses">
+            <el-icon><CourseManagementIcon /></el-icon>
+            课程管理
+          </el-menu-item>
+          <!-- <el-menu-item index="/system/courses/create">
+            <el-icon><Collection /></el-icon>
+            新增精品课程
+          </el-menu-item> -->
         </el-sub-menu>
       </el-menu>
     </el-aside>

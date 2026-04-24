@@ -18,6 +18,8 @@ public interface ProjectService {
 
     void update(ProjectStudy projectStudy);
 
+    void approve(Integer id);
+
     void delete(Integer id);
 
     void signup(Integer projectId, Integer userId);

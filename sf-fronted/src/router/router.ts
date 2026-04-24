@@ -10,9 +10,15 @@ import ChatWindow from '@/pages/forum/ChatWindow.vue'
 import Users from '@/pages/system/Users.vue'
 import UserDetail from '@/pages/system/UserDetail.vue'
 import SystemProject from '@/pages/system/Project.vue'
+import SystemNews from '@/pages/system/News.vue'
+import SystemCourses from '@/pages/system/Courses.vue'
+import SystemCourseCreate from '@/pages/system/CourseCreate.vue'
+import SystemCourseEdit from '@/pages/system/CourseEdit.vue'
 import Management from '@/pages/projects/Management.vue'
 import News from '@/pages/projects/News.vue'
 import NewsDetail from '@/pages/projects/NewsDetail.vue'
+import NewsCreate from '@/pages/projects/NewsCreate.vue'
+import NewsEdit from '@/pages/system/NewsEdit.vue'
 import Courses from '@/pages/projects/Courses.vue'
 import CoursesDetail from '@/pages/projects/CoursesDetail.vue'
 import Login from '@/pages/login/Login.vue'
@@ -36,13 +42,20 @@ const routes = [
       { path: 'system/users', component: Users },
       { path: 'system/users/detail', component: UserDetail },
       { path: 'system/project', component: SystemProject },
+      { path: 'system/news', component: SystemNews },
+      { path: 'system/courses', component: SystemCourses },
       { path: 'projects/management', component: Management },
       { path: 'projects/new', component: NewProject },
       { path: 'projects/detail/:id', component: ProjectDetail },
       { path: 'projects/news', component: News },
+      { path: 'projects/news/create', component: NewsCreate },
+      { path: 'projects/news/edit/:id', component: NewsEdit },
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },
-      { path: 'projects/courses/:id', component: CoursesDetail },
+      { path: 'projects/courses/create', component: SystemCourseCreate },
+      { path: 'projects/courses/edit/:id', component: SystemCourseEdit },
+      { path: 'projects/courses/detail/:id', component: CoursesDetail },
+      { path: 'projects/courses/:id', redirect: (to) => `/projects/courses/detail/${to.params.id}` },
       { path: 'projects/courses/article/:id', component: ArticleDetail },
       { path: 'common/upload-test', component: UploadTest }
     ]
@@ -59,7 +72,8 @@ const routes = [
       { path: 'projects/news', component: News },
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },
-      { path: 'projects/courses/:id', component: CoursesDetail },
+      { path: 'projects/courses/detail/:id', component: CoursesDetail },
+      { path: 'projects/courses/:id', redirect: (to) => `/student/projects/courses/detail/${to.params.id}` },
       { path: 'projects/courses/article/:id', component: ArticleDetail },
       { path: 'projects/detail/:id', component: ProjectDetail },
     ]
@@ -85,6 +99,8 @@ const adminOnlyPaths = [
   '/projects/new',
   '/projects/detail',
   '/common/upload-test',
+  '/system/news',
+  '/system/courses',
 ]
 
 const studentAllowedPaths = [

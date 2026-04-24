@@ -45,6 +45,13 @@ public class ProjectController {
         return Result.success();
     }
 
+    @PutMapping("/approve")
+    public Result approve(@RequestParam Integer id) {
+        log.info("审核通过项目Controller层: {}", id);
+        projectService.approve(id);
+        return Result.success();
+    }
+
     @PutMapping("/update")
     public Result update(@RequestBody ProjectStudy projectStudy) {
         log.info("更新项目Controller层: {}", projectStudy);

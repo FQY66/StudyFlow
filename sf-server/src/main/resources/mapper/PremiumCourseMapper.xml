@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sf.mapper.PremiumCourseMapper">
+    <select id="pageQuery" resultType="com.sf.entity.PremiumCourse">
+        select *
+        from premium_course
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and (title like concat('%', #{keyword}, '%')
+                     or summary like concat('%', #{keyword}, '%')
+                     or content like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">
+                and category = #{category}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+        </where>
+        order by sort_order desc, update_time desc, id desc
+    </select>
+
+    <select id="getById" resultType="com.sf.entity.PremiumCourse">
+        select * from premium_course where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.sf.entity.PremiumCourse">
+        insert into premium_course(title, category, summary, content, cover_path, video_path, teacher_name, duration, status, sort_order, click_count, create_time, update_time)
+        values(#{title}, #{category}, #{summary}, #{content}, #{coverPath}, #{videoPath}, #{teacherName}, #{duration}, #{status}, #{sortOrder}, #{clickCount}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.sf.entity.PremiumCourse">
+        update premium_course
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+            <if test="summary != null and summary != ''">summary = #{summary},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="coverPath != null and coverPath != ''">cover_path = #{coverPath},</if>
+            <if test="videoPath != null and videoPath != ''">video_path = #{videoPath},</if>
+            <if test="teacherName != null and teacherName != ''">teacher_name = #{teacherName},</if>
+            <if test="duration != null and duration != ''">duration = #{duration},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="clickCount != null">click_count = #{clickCount},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="delete">
+        delete from premium_course where id = #{id}
+    </delete>
+</mapper>

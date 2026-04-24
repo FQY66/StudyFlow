@@ -66,12 +66,12 @@ const formatAvatar = (value: string) => {
 }
 
 const userAvatar = computed(() => {
-  const manualAvatar = localStorage.getItem('avatar')
+  const manualAvatar = sessionStorage.getItem('avatar')
   if (manualAvatar) return formatAvatar(manualAvatar)
 
   const keys = ['avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
   for (const key of keys) {
-    const value = localStorage.getItem(key)
+    const value = sessionStorage.getItem(key)
     if (value) return formatAvatar(value)
   }
 
@@ -79,11 +79,11 @@ const userAvatar = computed(() => {
 })
 
 const userName = computed(() => {
-  return localStorage.getItem('nickname') || localStorage.getItem('name') || localStorage.getItem('username') || 'AD'
+  return sessionStorage.getItem('nickname') || sessionStorage.getItem('name') || sessionStorage.getItem('username') || 'AD'
 })
 
 const userRole = computed(() => {
-  const role = localStorage.getItem('role') || sessionStorage.getItem('role') || ''
+  const role = sessionStorage.getItem('role') || ''
   const roleMap: Record<string, string> = {
     student: '学生',
     teacher: '老师',
@@ -163,14 +163,15 @@ const logout = async () => {
       window.clearTimeout(messageNavigateTimer)
       messageNavigateTimer = undefined
     }
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('avatar')
-    localStorage.removeItem('avatarUrl')
-    localStorage.removeItem('headImg')
-    localStorage.removeItem('headimg')
-    localStorage.removeItem('photo')
-    localStorage.removeItem('picture')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('userRole')
+    sessionStorage.removeItem('avatar')
+    sessionStorage.removeItem('avatarUrl')
+    sessionStorage.removeItem('headImg')
+    sessionStorage.removeItem('headimg')
+    sessionStorage.removeItem('photo')
+    sessionStorage.removeItem('picture')
     router.push('/login')
   } catch {
     // cancelled

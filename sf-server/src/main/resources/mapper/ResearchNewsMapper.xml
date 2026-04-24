@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sf.mapper.ResearchNewsMapper">
+    <select id="pageQuery" resultType="com.sf.entity.ResearchNews">
+        select *
+        from research_news
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and (title like concat('%', #{keyword}, '%')
+                     or summary like concat('%', #{keyword}, '%')
+                     or content like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">
+                and category = #{category}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+        </where>
+        order by sort_order desc, update_time desc, id desc
+    </select>
+
+    <select id="getById" resultType="com.sf.entity.ResearchNews">
+        select * from research_news where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.sf.entity.ResearchNews">
+        insert into research_news(title, category, summary, content, source, status, sort_order, click_count, create_time, update_time)
+        values(#{title}, #{category}, #{summary}, #{content}, #{source}, #{status}, #{sortOrder}, #{clickCount}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.sf.entity.ResearchNews">
+        update research_news
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+            <if test="summary != null and summary != ''">summary = #{summary},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="source != null and source != ''">source = #{source},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="clickCount != null">click_count = #{clickCount},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="delete">
+        delete from research_news where id = #{id}
+    </delete>
+</mapper>

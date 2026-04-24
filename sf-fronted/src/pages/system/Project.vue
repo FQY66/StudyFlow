@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, ArrowDown } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { Editor2Icon, UsersIcon, Delete2Icon } from '@/components/icons'
+import { ApproveIcon, Delete2Icon, Editor2Icon, UnderReviewIcon, UsersIcon } from '@/components/icons'
 
 interface ProjectRow {
   id: number
@@ -264,6 +264,23 @@ const openEdit = (row: ProjectRow) => {
   dialogVisible.value = true
 }
 
+const handleApprove = async (row: ProjectRow) => {
+  if (row.status !== '待审核') return
+  try {
+    const { data } = await request.put<ApiResult<null>>('/project/approve', null, {
+      params: { id: row.id }
+    })
+    if (data.code !== 1) {
+      ElMessage.error(data.msg || '审核通过失败')
+      return
+    }
+    ElMessage.success('已审核通过')
+    await fetchProjects()
+  } catch {
+    ElMessage.error('审核通过失败，请稍后再试')
+  }
+}
+
 const handleDelete = async (row: ProjectRow) => {
   try {
     await ElMessageBox.confirm(`确认删除项目「${row.theme}」吗？`, '删除确认', {
@@ -319,6 +336,7 @@ const submitForm = async () => {
       const coverPath = coverFile.value ? await uploadCover() : formModel.coverPath
       const payload = {
         ...formModel,
+        status: '待审核',
         coverPath,
         capacity: Number(formModel.capacity),
         likeCount: Number(formModel.likeCount || 0),
@@ -547,7 +565,23 @@ onMounted(() => {
         </el-table-column>
         <el-table-column prop="category" label="类别" width="120" />
         <el-table-column prop="capacity" label="上限" width="100" />
-        <el-table-column prop="status" label="状态" width="120" />
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tooltip :content="row.status === '待审核' ? '点击审核通过' : '已通过'" placement="top" :show-after="150">
+              <el-button
+                text
+                class="status-button"
+                :disabled="row.status !== '待审核'"
+                @click="row.status === '待审核' && handleApprove(row)"
+              >
+                <el-icon :size="24" :class="row.status === '待审核' ? 'status-icon status-icon--pending' : 'status-icon status-icon--approved'">
+                  <UnderReviewIcon v-if="row.status === '待审核'" />
+                  <ApproveIcon v-else />
+                </el-icon>
+              </el-button>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column prop="likeCount" label="点赞" width="90" />
         <el-table-column prop="clickCount" label="点击" width="90" />
         <el-table-column prop="updateTime" label="更新时间" min-width="170" />

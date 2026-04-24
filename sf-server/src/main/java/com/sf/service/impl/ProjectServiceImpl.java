@@ -68,6 +68,15 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    public void approve(Integer id) {
+        log.info("审核通过项目Service层: {}", id);
+        ProjectStudy projectStudy = new ProjectStudy();
+        projectStudy.setId(id);
+        projectStudy.setStatus("已发布");
+        projectMapper.update(projectStudy);
+    }
+
+    @Override
     public void delete(Integer id) {
         log.info("删除项目Service层: {}", id);
         projectMapper.delete(id);

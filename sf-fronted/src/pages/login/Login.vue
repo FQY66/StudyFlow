@@ -146,8 +146,8 @@ const form = reactive({
 const loading = ref(false)
 
 onMounted(() => {
-  const username = localStorage.getItem('username')
-  if(username){
+  const username = localStorage.getItem('username') || sessionStorage.getItem('username')
+  if (username) {
     form.user = username
   }
 })
@@ -184,24 +184,27 @@ async function onLogin() {
       return
     }
 
-    const storage = form.remember ? localStorage : sessionStorage
-    const oppositeStorage = form.remember ? sessionStorage : localStorage
-
-    oppositeStorage.removeItem('token')
-    oppositeStorage.removeItem('role')
-    oppositeStorage.removeItem('userRole')
-
-    storage.setItem('token', token)
-    storage.setItem('role', loginData?.role || form.role)
-    storage.setItem('userRole', loginData?.role || form.role)
+    sessionStorage.setItem('token', token)
+    sessionStorage.setItem('role', loginData?.role || form.role)
+    sessionStorage.setItem('userRole', loginData?.role || form.role)
 
     const userFields = ['id', 'username', 'name', 'nickname', 'avatar', 'avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
     userFields.forEach((key) => {
       const value = loginData?.[key]
       if (value !== undefined && value !== null && value !== '') {
-        localStorage.setItem(key, String(value))
+        sessionStorage.setItem(key, String(value))
       }
     })
+
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('avatar')
+    localStorage.removeItem('avatarUrl')
+    localStorage.removeItem('headImg')
+    localStorage.removeItem('headimg')
+    localStorage.removeItem('photo')
+    localStorage.removeItem('picture')
 
     ElMessage.success('登录成功')
 
