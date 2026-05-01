@@ -11,6 +11,8 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class UserPageQueryDTO extends PageQueryDTO implements Serializable{
 
+    private String username;
+
     private String name;
 
     private String sex;

@@ -7,6 +7,9 @@
     <select id="pageQuery" resultType="com.sf.entity.User">
         select * from user
         <where>
+            <if test="username != null and username != ''">
+                and username like concat('%',#{username},'%')
+            </if>
             <if test="name != null and name != ''">
                 and name like concat('%',#{name},'%')
             </if>

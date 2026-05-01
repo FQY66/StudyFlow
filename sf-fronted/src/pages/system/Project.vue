@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search, ArrowDown } from '@element-plus/icons-vue'
+import { Refresh, ArrowDown } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { ApproveIcon, Delete2Icon, Editor2Icon, UnderReviewIcon, UsersIcon } from '@/components/icons'
 
@@ -66,27 +66,23 @@ interface ApiResult<T> {
   data: T
 }
 
-interface ProjectForm {
-  id?: number
-  coverPath: string
-  theme: string
-  introduction: string
-  content: string
-  category: string
-  capacity: number | ''
-  status: string
-  likeCount: number | ''
-  clickCount: number | ''
-}
-
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref<ProjectRow[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(8)
-const dialogVisible = ref(false)
 const categoryOptions = ref<string[]>([])
+const signupDialogVisible = ref(false)
+const signupUsers = ref<SignupUser[]>([])
+const signupProjectTheme = ref('')
+const signupProjectId = ref<number | null>(null)
+const searchForm = reactive({
+  theme: '',
+  category: '',
+  pendingFilter: 'all'
+})
+
 const filteredTableData = computed(() => {
   const themeKeyword = searchForm.theme.trim().toLowerCase()
   const categoryKeyword = searchForm.category.trim().toLowerCase()
@@ -107,97 +103,15 @@ const filteredTableData = computed(() => {
       return new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime()
     })
 })
-const signupDialogVisible = ref(false)
-const signupUsers = ref<SignupUser[]>([])
-const signupProjectTheme = ref('')
-const signupProjectId = ref<number | null>(null)
-const submitting = ref(false)
-const dialogMode = ref<'create' | 'edit'>('create')
-const searchForm = reactive({
-  theme: '',
-  category: '',
-  pendingFilter: 'all'
-})
-
-const formRef = ref()
-const coverFile = ref<File | null>(null)
-const coverPreview = ref('')
-const coverInputRef = ref<HTMLInputElement | null>(null)
-const coverDragOver = ref(false)
-const formModel = reactive<ProjectForm>({
-  id: undefined,
-  coverPath: '',
-  theme: '',
-  introduction: '',
-  content: '',
-  category: '',
-  capacity: '',
-  status: '审核中',
-  likeCount: 0,
-  clickCount: 0
-})
-
-const rules = {
-  theme: [{ required: true, message: '请输入项目主题', trigger: 'blur' }],
-  category: [{ required: true, message: '请选择项目类别', trigger: 'change' }],
-  introduction: [{ required: true, message: '请输入项目简介', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入项目内容', trigger: 'blur' }],
-  capacity: [{ required: true, message: '请输入报名上限', trigger: 'blur' }],
-  status: [{ required: true, message: '请选择项目状态', trigger: 'change' }]
-}
 
 const formatAvatar = (coverPath: string) => {
   if (!coverPath) return ''
-  if (coverPath.startsWith('http://') || coverPath.startsWith('https://') || coverPath.startsWith('data:')) {
-    return coverPath
-  }
+  if (coverPath.startsWith('http://') || coverPath.startsWith('https://') || coverPath.startsWith('data:')) return coverPath
   return `${import.meta.env.VITE_API_BASE_URL || ''}/${coverPath.replace(/^\/+/, '')}`
-}
-
-const resetCover = () => {
-  coverFile.value = null
-  coverPreview.value = ''
-  coverDragOver.value = false
-  formModel.coverPath = ''
-  if (coverInputRef.value) {
-    coverInputRef.value.value = ''
-  }
-}
-
-const handleCoverFile = (file?: File) => {
-  if (!file) return
-  if (!file.type.startsWith('image/')) {
-    ElMessage.warning('请选择图片文件')
-    return
-  }
-
-  coverFile.value = file
-  const reader = new FileReader()
-  reader.onload = () => {
-    coverPreview.value = String(reader.result || '')
-    formModel.coverPath = coverPreview.value
-  }
-  reader.readAsDataURL(file)
-}
-
-const onCoverDragOver = (event: DragEvent) => {
-  event.preventDefault()
-  coverDragOver.value = true
-}
-
-const onCoverDragLeave = () => {
-  coverDragOver.value = false
-}
-
-const onCoverDrop = (event: DragEvent) => {
-  event.preventDefault()
-  coverDragOver.value = false
-  handleCoverFile(event.dataTransfer?.files?.[0])
 }
 
 const normalizeProject = (item: ProjectApiRow): ProjectRow => {
   const pendingSignupCount = item.pendingSignupCount ?? (item.projectSignupList || []).filter((user) => user.status !== '已通过').length
-
   return {
     ...item,
     coverUrl: formatAvatar(item.coverPath),
@@ -209,6 +123,19 @@ const normalizeProject = (item: ProjectApiRow): ProjectRow => {
     clickCount: item.clickCount || 0,
     pendingSignupCount
   }
+}
+
+const fetchCategoryOptions = async () => {
+  try {
+    const { data } = await request.get<ApiResult<string[]>>('/project/categories')
+    if (data.code === 1) {
+      categoryOptions.value = (data.data || []).filter(Boolean)
+      return
+    }
+  } catch {
+    // ignore
+  }
+  categoryOptions.value = []
 }
 
 const fetchProjects = async () => {
@@ -230,155 +157,12 @@ const fetchProjects = async () => {
     }
 
     total.value = data.data.total
-    tableData.value = data.data.records.map(normalizeProject)
+    tableData.value = (data.data.records || []).map(normalizeProject)
   } catch {
     ElMessage.error('获取项目列表失败，请稍后再试')
   } finally {
     loading.value = false
   }
-}
-
-const openCreate = () => {
-  router.push('/projects/new')
-}
-
-const openEdit = (row: ProjectRow) => {
-  dialogMode.value = 'edit'
-  Object.assign(formModel, {
-    id: row.id,
-    coverPath: row.coverPath,
-    theme: row.theme,
-    introduction: row.introduction,
-    content: row.content,
-    category: row.category,
-    capacity: row.capacity,
-    status: row.status,
-    likeCount: row.likeCount,
-    clickCount: row.clickCount
-  })
-  coverFile.value = null
-  coverPreview.value = row.coverUrl
-  if (coverInputRef.value) {
-    coverInputRef.value.value = ''
-  }
-  dialogVisible.value = true
-}
-
-const handleApprove = async (row: ProjectRow) => {
-  if (row.status !== '待审核') return
-  try {
-    const { data } = await request.put<ApiResult<null>>('/project/approve', null, {
-      params: { id: row.id }
-    })
-    if (data.code !== 1) {
-      ElMessage.error(data.msg || '审核通过失败')
-      return
-    }
-    ElMessage.success('已审核通过')
-    await fetchProjects()
-  } catch {
-    ElMessage.error('审核通过失败，请稍后再试')
-  }
-}
-
-const handleDelete = async (row: ProjectRow) => {
-  try {
-    await ElMessageBox.confirm(`确认删除项目「${row.theme}」吗？`, '删除确认', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      customClass: 'sf-confirm-box sf-confirm-box--danger'
-    })
-
-    const { data } = await request.delete<ApiResult<null>>('/project/delete', {
-      params: { id: row.id }
-    })
-
-    if (data.code !== 1) {
-      ElMessage.error(data.msg || '删除失败')
-      return
-    }
-
-    ElMessage.success('删除成功')
-    await fetchProjects()
-  } catch {
-    // cancelled
-  }
-}
-
-const uploadCover = async () => {
-  if (!coverFile.value) return formModel.coverPath || ''
-
-  const formData = new FormData()
-  formData.append('file', coverFile.value)
-  const { data } = await request.post<ApiResult<Record<string, string>>>('/common/file/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
-
-  if (data.code !== 1) {
-    throw new Error(data.msg || '封面上传失败')
-  }
-
-  return data.data?.path || data.data?.url || ''
-}
-
-const submitForm = async () => {
-  const form = formRef.value
-  if (!form) return
-
-  await form.validate(async (valid: boolean) => {
-    if (!valid) return
-
-    submitting.value = true
-    try {
-      const coverPath = coverFile.value ? await uploadCover() : formModel.coverPath
-      const payload = {
-        ...formModel,
-        status: '待审核',
-        coverPath,
-        capacity: Number(formModel.capacity),
-        likeCount: Number(formModel.likeCount || 0),
-        clickCount: Number(formModel.clickCount || 0),
-        createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
-        updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
-      }
-
-      const isCreate = dialogMode.value === 'create'
-      const url = isCreate ? '/project/save' : '/project/update'
-      const { data } = isCreate
-        ? await request.post<ApiResult<null>>(url, payload)
-        : await request.put<ApiResult<null>>(url, payload)
-
-      if (data.code !== 1) {
-        ElMessage.error(data.msg || (dialogMode.value === 'create' ? '新增失败' : '更新失败'))
-        return
-      }
-
-      ElMessage.success(dialogMode.value === 'create' ? '新增成功' : '更新成功')
-      dialogVisible.value = false
-      resetCover()
-      await fetchProjects()
-    } catch {
-      ElMessage.error(dialogMode.value === 'create' ? '新增失败，请稍后再试' : '更新失败，请稍后再试')
-    } finally {
-      submitting.value = false
-    }
-  })
-}
-
-const fetchCategoryOptions = async () => {
-  try {
-    const { data } = await request.get<ApiResult<string[]>>('/project/categories')
-    if (data.code === 1) {
-      categoryOptions.value = (data.data || []).filter(Boolean)
-      return
-    }
-  } catch {
-    // ignore
-  }
-  categoryOptions.value = []
 }
 
 const handleAutoSearch = async () => {
@@ -401,16 +185,54 @@ const resetSearch = async () => {
   await fetchProjects()
 }
 
-const goToDetail = (row: ProjectRow) => {
-  router.push(`/projects/detail/${row.id}`)
+const openCreate = () => {
+  router.push('/projects/new')
+}
+
+const openEdit = (row: ProjectRow) => {
+  router.push(`/system/project/edit/${row.id}`)
+}
+
+const handleApprove = async (row: ProjectRow) => {
+  if (row.status !== '待审核') return
+  try {
+    const { data } = await request.put<ApiResult<null>>('/project/approve', null, { params: { id: row.id } })
+    if (data.code !== 1) {
+      ElMessage.error(data.msg || '审核通过失败')
+      return
+    }
+    ElMessage.success('已审核通过')
+    await fetchProjects()
+  } catch {
+    ElMessage.error('审核通过失败，请稍后再试')
+  }
+}
+
+const handleDelete = async (row: ProjectRow) => {
+  try {
+    await ElMessageBox.confirm(`确认删除项目「${row.theme}」吗？`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      customClass: 'sf-confirm-box sf-confirm-box--danger'
+    })
+
+    const { data } = await request.delete<ApiResult<null>>('/project/delete', { params: { id: row.id } })
+    if (data.code !== 1) {
+      ElMessage.error(data.msg || '删除失败')
+      return
+    }
+
+    ElMessage.success('删除成功')
+    await fetchProjects()
+  } catch {
+    // cancelled
+  }
 }
 
 const openSignupUsers = async (row: ProjectRow) => {
   try {
-    const { data } = await request.get<ApiResult<any>>('/project/detail', {
-      params: { id: row.id }
-    })
-
+    const { data } = await request.get<ApiResult<any>>('/project/detail', { params: { id: row.id } })
     if (data.code !== 1) {
       ElMessage.error(data.msg || '获取报名用户失败')
       return
@@ -457,6 +279,13 @@ const openUserDetail = (user: SignupUser) => {
   })
 }
 
+const safeAvatarSrc = (avatar?: string, seed = 0) => {
+  const raw = (avatar || '').trim()
+  if (!raw) return `https://i.pravatar.cc/80?img=${(seed % 60) + 1}`
+  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) return raw
+  return `${import.meta.env.VITE_API_BASE_URL || ''}/${raw.replace(/^\/+/, '')}`
+}
+
 const handleSignupAudit = async (user: SignupUser, approved: boolean) => {
   if (!signupProjectId.value) return
   const actionLabel = approved ? '通过' : '不通过'
@@ -470,9 +299,7 @@ const handleSignupAudit = async (user: SignupUser, approved: boolean) => {
       cancelButtonText: '取消'
     })
 
-    const requestConfig = {
-      params: { projectId: signupProjectId.value, userId: user.userId || user.id }
-    }
+    const requestConfig = { params: { projectId: signupProjectId.value, userId: user.userId || user.id } }
     const { data } = await (approved
       ? request.post<ApiResult<null>>(requestUrl, null, requestConfig)
       : request.delete<ApiResult<null>>(requestUrl, requestConfig))
@@ -493,10 +320,6 @@ const handleSignupAuditCommand = (user: SignupUser, command: 'approve' | 'reject
   void handleSignupAudit(user, command === 'approve')
 }
 
-const handleSearch = async () => {
-  await handleAutoSearch()
-}
-
 const handleCurrentChange = async (page: number) => {
   currentPage.value = page
   await fetchProjects()
@@ -511,8 +334,8 @@ const handleSizeChange = async (size: number) => {
 const tableSummary = computed(() => `共 ${total.value} 条项目`)
 
 onMounted(() => {
-  fetchCategoryOptions()
-  fetchProjects()
+  void fetchCategoryOptions()
+  void fetchProjects()
 })
 </script>
 
@@ -545,7 +368,7 @@ onMounted(() => {
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="toolbar-left">
-          <el-button type="primary" class="sf-btn" :icon="Plus" @click="openCreate">新增项目</el-button>
+          <el-button type="primary" class="sf-btn" @click="openCreate">新增项目</el-button>
         </div>
         <div class="toolbar-right">{{ tableSummary }}</div>
       </div>
@@ -560,7 +383,7 @@ onMounted(() => {
         </el-table-column>
         <el-table-column label="主题" min-width="180">
           <template #default="{ row }">
-            <el-button link type="primary" class="theme-link" @click="goToDetail(row)">{{ row.theme }}</el-button>
+            <el-button link type="primary" class="theme-link" @click="router.push(`/projects/detail/${row.id}`)">{{ row.theme }}</el-button>
           </template>
         </el-table-column>
         <el-table-column prop="category" label="类别" width="120" />
@@ -568,12 +391,7 @@ onMounted(() => {
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
             <el-tooltip :content="row.status === '待审核' ? '点击审核通过' : '已通过'" placement="top" :show-after="150">
-              <el-button
-                text
-                class="status-button"
-                :disabled="row.status !== '待审核'"
-                @click="row.status === '待审核' && handleApprove(row)"
-              >
+              <el-button text class="status-button" :disabled="row.status !== '待审核'" @click="row.status === '待审核' && handleApprove(row)">
                 <el-icon :size="24" :class="row.status === '待审核' ? 'status-icon status-icon--pending' : 'status-icon status-icon--approved'">
                   <UnderReviewIcon v-if="row.status === '待审核'" />
                   <ApproveIcon v-else />
@@ -590,25 +408,19 @@ onMounted(() => {
             <div class="action-row">
               <el-tooltip content="编辑项目" placement="top" show-after="300">
                 <el-button text type="primary" class="action-btn" @click="openEdit(row)">
-                  <el-icon size="25">
-                    <Editor2Icon />
-                  </el-icon>
+                  <el-icon size="25"><Editor2Icon /></el-icon>
                 </el-button>
               </el-tooltip>
               <el-tooltip :content="row.pendingSignupCount > 0 ? `查看报名用户（${row.pendingSignupCount}个待审核）` : '查看报名用户'" placement="top" show-after="300">
                 <el-badge :value="row.pendingSignupCount" :hidden="row.pendingSignupCount === 0" type="danger" :offset="[2, 8]">
                   <el-button text type="success" class="action-btn" @click="openSignupUsers(row)">
-                    <el-icon size="25">
-                      <UsersIcon />
-                    </el-icon>
+                    <el-icon size="25"><UsersIcon /></el-icon>
                   </el-button>
                 </el-badge>
               </el-tooltip>
               <el-tooltip content="删除项目" placement="top" show-after="300">
                 <el-button text type="danger" class="action-btn" @click="handleDelete(row)">
-                  <el-icon size="25">
-                    <Delete2Icon />
-                  </el-icon>
+                  <el-icon size="25"><Delete2Icon /></el-icon>
                 </el-button>
               </el-tooltip>
             </div>
@@ -634,7 +446,7 @@ onMounted(() => {
       <div v-else class="signup-list">
         <el-card v-for="user in signupUsers" :key="user.id || user.userId || user.userName || user.nickname || user.realName" class="signup-user-card" shadow="never">
           <div class="signup-user-row clickable" @click="openUserDetail(user)">
-            <el-avatar :size="44" :src="formatAvatar(user.avatar || '')">{{ getUserDisplayName(user).slice(0, 1) }}</el-avatar>
+            <el-avatar :size="44" :src="safeAvatarSrc(user.avatar, Number(user.userId || user.id || 0))">{{ getUserDisplayName(user).slice(0, 1) }}</el-avatar>
             <div class="signup-user-info">
               <div class="signup-user-name">
                 <span>{{ getUserDisplayName(user) }}</span>
@@ -663,282 +475,30 @@ onMounted(() => {
         </el-card>
       </div>
     </el-dialog>
-
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '新增项目' : '编辑项目'" width="760px">
-      <el-form ref="formRef" :model="formModel" :rules="rules" label-width="100px">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="项目主题" prop="theme">
-              <el-input v-model="formModel.theme" placeholder="请输入项目主题" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="项目类别" prop="category">
-              <el-input v-model="formModel.category" placeholder="请输入项目类别" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="报名上限" prop="capacity">
-              <el-input-number v-model="formModel.capacity" :min="1" class="w-100" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="项目状态" prop="status">
-              <el-select v-model="formModel.status" class="w-100">
-                <el-option label="审核中" value="审核中" />
-                <el-option label="已发布" value="已发布" />
-                <el-option label="已下架" value="已下架" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="封面路径">
-              <div class="cover-uploader-wrap">
-                <div
-                  class="cover-uploader"
-                  :class="{ 'is-drag-over': coverDragOver }"
-                  @click="coverInputRef?.click()"
-                  @dragover="onCoverDragOver"
-                  @dragleave="onCoverDragLeave"
-                  @drop="onCoverDrop"
-                >
-                  <img v-if="coverPreview || formModel.coverPath" :src="coverPreview || formatAvatar(formModel.coverPath)" alt="cover" class="cover-preview-img" />
-                  <div v-else class="cover-placeholder">
-                    <el-icon><Plus /></el-icon>
-                    <span>点击或拖拽上传封面</span>
-                  </div>
-                </div>
-                <div class="cover-actions">
-                  <el-button size="small" type="primary" class="sf-btn" @click="coverInputRef?.click()">选择图片</el-button>
-                  <el-button size="small" type="primary" class="sf-btn is-plain" @click="resetCover">清空</el-button>
-                </div>
-                <input
-                  ref="coverInputRef"
-                  type="file"
-                  accept="image/*"
-                  class="hidden-file-input"
-                  @change="(event) => handleCoverFile((event.target as HTMLInputElement).files?.[0])"
-                />
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="项目简介" prop="introduction">
-              <el-input v-model="formModel.introduction" type="textarea" :rows="3" placeholder="请输入项目简介" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="项目内容" prop="content">
-              <el-input v-model="formModel.content" type="textarea" :rows="6" placeholder="请输入项目内容" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-
-      <template #footer>
-        <el-button type="primary" class="sf-btn is-plain" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" class="sf-btn" :loading="submitting" @click="submitForm">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.project-page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-}
-
-.category-select,
-.pending-select {
-  width: 240px;
-}
-
-:deep(.el-table),
-:deep(.el-table__inner-wrapper),
-:deep(.el-table__body-wrapper),
-:deep(.el-table__header-wrapper),
-:deep(.el-table td),
-:deep(.el-table th.is-leaf) {
-  border: none !important;
-}
-
-:deep(.el-table::before),
-:deep(.el-table__inner-wrapper::before),
-:deep(.el-table__border-left-patch) {
-  display: none !important;
-}
-
-:deep(.el-table__row > td) {
-  border-bottom: 1px solid #ebeef5 !important;
-  padding-top: 18px !important;
-  padding-bottom: 18px !important;
-}
-
-:deep(.el-table .cell) {
-  line-height: 1.6;
-  font-size: 15px;
-}
-
-:deep(.el-table__row) {
-  height: 84px;
-}
-
-.cover-uploader-wrap {
-  width: 100%;
-}
-
-.cover-uploader {
-  width: 100%;
-  height: 220px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #fafafa;
-  cursor: pointer;
-}
-
-.cover-uploader.is-drag-over {
-  border-color: #409eff;
-  background: #f0f7ff;
-}
-
-.cover-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-placeholder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  color: #909399;
-}
-
-.cover-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.hidden-file-input {
-  display: none;
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toolbar-right {
-  color: #909399;
-}
-
-.theme-link {
-  padding: 0;
-  font-weight: 600;
-}
-
-.clickable {
-  cursor: pointer;
-}
-
-.table-footer {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.signup-list {
-  display: grid;
-  gap: 12px;
-}
-
-.signup-user-card {
-  border-radius: 12px;
-}
-
-.signup-user-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.action-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-.action-btn {
-  margin: 0;
-  padding: 0;
-  font-size: 18px;
-  min-height: 34px;
-  line-height: 1;
-}
-
-.action-btn :deep(.el-icon) {
-  font-size: 18px;
-}
-
-.signup-user-row.clickable {
-  cursor: pointer;
-}
-
-.signup-user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.signup-user-name {
-  font-weight: 600;
-  color: #303133;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.signup-status-tag {
-  margin-left: 0;
-}
-
-.signup-user-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.signup-user-meta {
-  color: #909399;
-  font-size: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.w-100 {
-  width: 100%;
-}
-
-:deep(.signup-users-message-box) {
-  white-space: pre-line;
-}
+.project-page { display: flex; flex-direction: column; gap: 12px; }
+.search-form { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.category-select, .pending-select { width: 240px; }
+:deep(.el-table), :deep(.el-table__inner-wrapper), :deep(.el-table__body-wrapper), :deep(.el-table__header-wrapper), :deep(.el-table td), :deep(.el-table th.is-leaf) { border: none !important; }
+:deep(.el-table::before), :deep(.el-table__inner-wrapper::before), :deep(.el-table__border-left-patch) { display: none !important; }
+:deep(.el-table__row > td) { border-bottom: 1px solid #ebeef5 !important; padding-top: 18px !important; padding-bottom: 18px !important; }
+:deep(.el-table .cell) { line-height: 1.6; font-size: 15px; }
+:deep(.el-table__row) { height: 84px; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; }
+.toolbar-right { color: #909399; }
+.theme-link { padding: 0; font-weight: 600; }
+.table-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+.signup-list { display: grid; gap: 12px; }
+.signup-user-card { border-radius: 12px; }
+.signup-user-row { display: flex; align-items: center; gap: 12px; }
+.action-row { display: inline-flex; align-items: center; gap: 12px; flex-wrap: nowrap; white-space: nowrap; }
+.action-btn { margin: 0; padding: 0; font-size: 18px; min-height: 34px; line-height: 1; }
+.action-btn :deep(.el-icon) { font-size: 18px; }
+.signup-user-row.clickable { cursor: pointer; }
+.signup-user-info { display: flex; flex-direction: column; gap: 4px; }
+.signup-user-name { font-weight: 600; color: #303133; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.signup-user-meta { color: #909399; font-size: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
 </style>

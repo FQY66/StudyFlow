@@ -13,6 +13,7 @@ import com.sf.exception.PasswordErrorException;
 import com.sf.mapper.UserMapper;
 import com.sf.properties.JwtProperties;
 import com.sf.result.PageResult;
+import com.sf.service.OnlineStatusService;
 import com.sf.service.UserService;
 import com.sf.utils.JwtUtil;
 import com.sf.dto.UserLoginDTO;
@@ -36,6 +37,9 @@ public class UserServiceImpl implements UserService {
     private UserMapper userMapper;
     @Autowired
     private JwtProperties jwtProperties;
+
+    @Autowired
+    private OnlineStatusService onlineStatusService;
 
     @Override
     public UserVO login(UserLoginDTO userLoginDTO) {
@@ -80,6 +84,8 @@ public class UserServiceImpl implements UserService {
         log.info("生成的JWT令牌：" + token);
         log.info("用户信息：{}" ,user);
         //3、返回实体对象
+        onlineStatusService.markOnline(user.getId());
+
         return UserVO.builder()
                 .id(user.getId())
                 .token(token)
@@ -108,7 +114,7 @@ public class UserServiceImpl implements UserService {
         //3、对密码进行MD5加密
         String MD5pwd = DigestUtils.md5DigestAsHex(password.getBytes());
         int randomInt = new Random().nextInt(10);
-        String avatar = ResourceConstant.DEFAULT_USER_AVATAR + "defaultAvatar" + randomInt + ".png";
+        String avatar = ResourceConstant.DEFAULT_USER_AVATAR + "defaultAvatar" + randomInt + ".jpg";
         User user = User.builder()
                         .username(username)
                         .name(name)

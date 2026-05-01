@@ -66,13 +66,17 @@ const formatAvatar = (value: string) => {
 }
 
 const userAvatar = computed(() => {
-  const manualAvatar = sessionStorage.getItem('avatar')
-  if (manualAvatar) return formatAvatar(manualAvatar)
+  const sources = [localStorage, sessionStorage]
 
-  const keys = ['avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
-  for (const key of keys) {
-    const value = sessionStorage.getItem(key)
-    if (value) return formatAvatar(value)
+  for (const storage of sources) {
+    const manualAvatar = storage.getItem('avatar')
+    if (manualAvatar) return formatAvatar(manualAvatar)
+
+    const keys = ['avatarUrl', 'headImg', 'headimg', 'photo', 'picture']
+    for (const key of keys) {
+      const value = storage.getItem(key)
+      if (value) return formatAvatar(value)
+    }
   }
 
   return ''

@@ -10,6 +10,7 @@ import ChatWindow from '@/pages/forum/ChatWindow.vue'
 import Users from '@/pages/system/Users.vue'
 import UserDetail from '@/pages/system/UserDetail.vue'
 import SystemProject from '@/pages/system/Project.vue'
+import SystemProjectEdit from '@/pages/system/ProjectEdit.vue'
 import SystemNews from '@/pages/system/News.vue'
 import SystemCourses from '@/pages/system/Courses.vue'
 import SystemCourseCreate from '@/pages/system/CourseCreate.vue'
@@ -42,6 +43,7 @@ const routes = [
       { path: 'system/users', component: Users },
       { path: 'system/users/detail', component: UserDetail },
       { path: 'system/project', component: SystemProject },
+      { path: 'system/project/edit/:id', component: SystemProjectEdit },
       { path: 'system/news', component: SystemNews },
       { path: 'system/courses', component: SystemCourses },
       { path: 'projects/management', component: Management },

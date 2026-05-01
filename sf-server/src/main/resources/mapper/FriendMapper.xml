@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sf.mapper.FriendMapper">
+
+    <select id="findRelation" resultType="com.sf.entity.FriendRelation">
+        select id, user_id as userId, friend_id as friendId, status, create_time as createTime, update_time as updateTime
+        from friend_relation
+        where ((user_id = #{userId} and friend_id = #{friendId})
+           or (user_id = #{friendId} and friend_id = #{userId}))
+        limit 1
+    </select>
+
+    <select id="findRelationById" resultType="com.sf.entity.FriendRelation">
+        select id, user_id as userId, friend_id as friendId, status, create_time as createTime, update_time as updateTime
+        from friend_relation
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="findRelationByIdAndUserId" resultType="com.sf.entity.FriendRelation">
+        select id, user_id as userId, friend_id as friendId, status, create_time as createTime, update_time as updateTime
+        from friend_relation
+        where id = #{id}
+          and friend_id = #{userId}
+        limit 1
+    </select>
+
+    <insert id="insertRelation" parameterType="com.sf.entity.FriendRelation" useGeneratedKeys="true" keyProperty="id">
+        insert into friend_relation(user_id, friend_id, status, create_time, update_time)
+        values(#{userId}, #{friendId}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateRelationStatus">
+        update friend_relation
+        set status = #{status}, update_time = now()
+        where id = #{id}
+    </update>
+
+    <select id="listFriends" resultType="com.sf.vo.FriendVO">
+        select
+            u.id as userId,
+            u.name as name,
+            u.username as username,
+            u.email as email,
+            u.avatar as avatar
+        from friend_relation fr
+        join user u
+            on (
+                (fr.user_id = #{userId} and u.id = fr.friend_id)
+                or
+                (fr.friend_id = #{userId} and u.id = fr.user_id)
+            )
+        where fr.status = 1
+        order by fr.update_time desc
+    </select>
+
+    <select id="listPendingRequests" resultType="com.sf.vo.FriendRequestVO">
+        select
+            fr.id as id,
+            fr.user_id as requesterId,
+            u.name as requesterName,
+            u.username as requesterUsername,
+            u.email as requesterEmail,
+            u.avatar as requesterAvatar,
+            fr.status as status,
+            fr.create_time as createTime
+        from friend_relation fr
+        join user u on u.id = fr.user_id
+        where fr.friend_id = #{userId}
+          and fr.status = 0
+        order by fr.create_time desc
+    </select>
+
+</mapper>

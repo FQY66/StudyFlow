@@ -20,6 +20,9 @@ public interface UserMapper {
     @Select("select id from user where username = #{username} ")
     Long getById(String username);
 
+    @Select("select * from user where id = #{id}")
+    User getByUserId(Long id);
+
     @Insert("insert into user(username, password, name, sex, email, phone, avatar, role, status, create_time, update_time) " +
             "values(#{username}, #{password}, #{name}, #{sex}, #{email}, #{phone}, #{avatar}, #{role}, #{status}, #{createTime}, #{updateTime})")
     @AutoFill(OperationType.INSERT)

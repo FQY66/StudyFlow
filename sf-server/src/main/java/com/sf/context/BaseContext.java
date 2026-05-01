@@ -1,0 +1,17 @@
+package com.sf.context;
+
+public class BaseContext {
+    private static final ThreadLocal<Long> CURRENT_ID = new ThreadLocal<>();
+
+    public static void setCurrentId(Long id) {
+        CURRENT_ID.set(id);
+    }
+
+    public static Long getCurrentId() {
+        return CURRENT_ID.get();
+    }
+
+    public static void removeCurrentId() {
+        CURRENT_ID.remove();
+    }
+}

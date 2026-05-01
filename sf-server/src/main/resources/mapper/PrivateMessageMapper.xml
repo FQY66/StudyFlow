@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.sf.mapper.PrivateMessageMapper">
+
+    <insert id="insert" parameterType="com.sf.entity.PrivateMessage" useGeneratedKeys="true" keyProperty="id">
+        insert into private_message(sender_id, receiver_id, content, is_read, create_time)
+        values(#{senderId}, #{receiverId}, #{content}, #{isRead}, #{createTime})
+    </insert>
+
+    <select id="listConversation" resultType="com.sf.vo.PrivateMessageVO">
+        select
+            id,
+            sender_id as senderId,
+            receiver_id as receiverId,
+            content,
+            is_read as isRead,
+            create_time as createTime
+        from private_message
+        where (sender_id = #{userId} and receiver_id = #{friendId})
+           or (sender_id = #{friendId} and receiver_id = #{userId})
+        order by create_time asc
+    </select>
+
+</mapper>
