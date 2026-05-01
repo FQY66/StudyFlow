@@ -28,10 +28,18 @@ import ArticleDetail from '@/pages/projects/ArticleDetail.vue'
 import NewProject from '@/pages/projects/NewProject.vue'
 import ProjectDetail from '@/pages/projects/ProjectDetail.vue'
 import UploadTest from '@/pages/common/UploadTest.vue'
+import Ai from '@/pages/ai/Ai.vue'
 
 const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  {
+    path: '/sf/ai',
+    component: AdminLayout,
+    children: [
+      { path: '', component: Ai }
+    ]
+  },
   {
     path: '/',
     component: AdminLayout,
@@ -78,6 +86,7 @@ const routes = [
       { path: 'projects/courses/:id', redirect: (to) => `/student/projects/courses/detail/${to.params.id}` },
       { path: 'projects/courses/article/:id', component: ArticleDetail },
       { path: 'projects/detail/:id', component: ProjectDetail },
+      { path: 'sf/ai', component: Ai },
     ]
   },
   {

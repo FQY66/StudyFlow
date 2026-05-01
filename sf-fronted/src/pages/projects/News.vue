@@ -43,13 +43,18 @@ const slides = [
 
 const categoryOptions = ['研学动态', '政策解读', '案例分享', '活动通知', '专家观点']
 
+const isApprovedStatus = (status?: string) => {
+  return String(status || '').trim() === '已发布'
+}
+
 const filteredItems = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   const cat = category.value.trim().toLowerCase()
   return items.value.filter((item) => {
+    const approvedMatch = isApprovedStatus(item.status)
     const keywordMatch = !kw || item.title.toLowerCase().includes(kw) || item.summary.toLowerCase().includes(kw)
     const categoryMatch = !cat || item.category.toLowerCase().includes(cat)
-    return keywordMatch && categoryMatch
+    return approvedMatch && keywordMatch && categoryMatch
   })
 })
 

@@ -22,8 +22,8 @@ HEADERS = {
 BASE_URL = "https://www.peoplehibl.com/"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-IN_LINKS = os.path.join(BASE_DIR, "..", "data", "raw", "peoplehibl_unique_detail_links.txt")
-OUT_RAW = os.path.join(BASE_DIR, "..", "data", "raw", "peoplehibl_docs.jsonl")
+IN_LINKS = os.path.join(BASE_DIR, "..", "data", "raw", "peoplehibl_zhengce_unique_detail_links.txt")
+OUT_RAW = os.path.join(BASE_DIR, "..", "data", "raw", "peoplehibl_zhengce_docs.jsonl")
 
 SLEEP_SECONDS = float(os.getenv("PEOPLEHIBL_SLEEP", "3.0"))
 JITTER_MIN = float(os.getenv("PEOPLEHIBL_JITTER_MIN", "1.0"))
@@ -246,7 +246,7 @@ def main() -> None:
                 "publish_time": d.publish_time,
                 "text": d.content,
                 "metadata": {
-                    "source": "peoplehibl",
+                    "source": "peoplehibl_zhengce",
                     "url": d.url,
                     "title": d.title,
                     "publish_time": d.publish_time,

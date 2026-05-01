@@ -54,9 +54,10 @@ const filteredCourses = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   const cat = category.value.trim().toLowerCase()
   return courses.value.filter((c) => {
+    const publishedMatch = String(c.status || '').trim() === '已发布'
     const keywordMatch = !kw || c.title.toLowerCase().includes(kw) || c.summary.toLowerCase().includes(kw)
     const categoryMatch = !cat || c.category.toLowerCase().includes(cat)
-    return keywordMatch && categoryMatch
+    return publishedMatch && keywordMatch && categoryMatch
   })
 })
 

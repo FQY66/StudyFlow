@@ -220,8 +220,8 @@ const onPublish = async () => {
       status: form.value.status,
       content: form.value.content,
       clickCount: 0,
-      createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+      createTime: new Date().toISOString().slice(0, 19),
+      updateTime: new Date().toISOString().slice(0, 19)
     }
     const { data } = await request.post('/researchNews/save', payload)
     if (data?.code !== 1) {
