@@ -16,4 +16,6 @@ public interface ResearchNewsService {
     void update(ResearchNews researchNews);
 
     void delete(Integer id);
+
+    void increaseClickCount(Integer id);
 }

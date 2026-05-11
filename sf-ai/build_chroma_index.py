@@ -64,28 +64,51 @@ def main():
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--verbose", action="store_true", help="打印更多调试日志")
     parser.add_argument("--preview-len", type=int, default=160, help="日志预览字符长度")
+    parser.add_argument("--show-every", type=int, default=200, help="每处理多少条记录打印一次进度日志")
+    parser.add_argument("--show-batch", action="store_true", help="打印每个向量批次的详细日志")
     args = parser.parse_args()
 
     base_dir = Path(args.base_dir).resolve()
     db_path = (base_dir / args.db_path).resolve()
     db_path.mkdir(parents=True, exist_ok=True)
 
+    print("=" * 90)
+    print("[START] 开始构建 Chroma 索引")
+    print(f"[CFG] base_dir   = {base_dir}")
+    print(f"[CFG] db_path    = {db_path}")
+    print(f"[CFG] collection = {args.collection}")
+    print(f"[CFG] embed_model= {args.embed_model}")
+    print(f"[CFG] ollama_url = {args.ollama_url}")
+    print(f"[CFG] batch_size = {args.batch_size}")
+    print(f"[CFG] show_every = {args.show_every}")
+    print(f"[CFG] files      = {args.files}")
+    print("=" * 90)
+
     client = chromadb.PersistentClient(path=str(db_path))
     collection = client.get_or_create_collection(name=args.collection, metadata={"hnsw:space": "cosine"})
+    before_count = collection.count()
+    print(f"[INFO] collection 当前向量数: {before_count}")
 
     ids, docs, metas = [], [], []
     file_stats = {}
 
     for rel in args.files:
         fpath = (base_dir / rel).resolve()
+        print("-" * 90)
+        print(f"[FILE] 配置路径: {rel}")
+        print(f"[FILE] 解析绝对路径: {fpath}")
         if not fpath.exists():
             print(f"[WARN] 文件不存在，跳过: {fpath}")
             continue
 
         stat = {"rows": 0, "rows_empty_text": 0, "chunks": 0}
-        print(f"[INFO] 读取: {fpath}")
+        print(f"[INFO] 开始读取: {fpath}")
         for row in read_jsonl(fpath):
             stat["rows"] += 1
+            if args.show_every > 0 and stat["rows"] % args.show_every == 0:
+                print(
+                    f"[PROGRESS] file={fpath.name} rows={stat['rows']} chunks={stat['chunks']} empty_text={stat['rows_empty_text']}"
+                )
             meta = row.get("metadata", {}) or {}
             source = row.get("source", "") or meta.get("source", fpath.stem)
             url = row.get("url", "") or meta.get("url", "")
@@ -130,6 +153,9 @@ def main():
                     print(f"  [CHUNK {i}] preview: {chunk_preview}")
                 stat["chunks"] += 1
 
+        print(
+            f"[FILE DONE] {fpath.name} | rows={stat['rows']} | empty_text_rows={stat['rows_empty_text']} | chunks={stat['chunks']}"
+        )
         file_stats[str(fpath)] = stat
 
     print("\n[INFO] 各文件解析统计：")
@@ -143,14 +169,32 @@ def main():
         print("[INFO] 没有可写入内容，结束")
         return
 
-    for i in tqdm(range(0, len(docs), args.batch_size), desc="Embedding+Upsert"):
+    total_batches = (len(docs) + args.batch_size - 1) // args.batch_size
+    for batch_idx, i in enumerate(tqdm(range(0, len(docs), args.batch_size), desc="Embedding+Upsert"), start=1):
         b_ids = ids[i : i + args.batch_size]
         b_docs = docs[i : i + args.batch_size]
         b_meta = metas[i : i + args.batch_size]
+
+        if args.show_batch:
+            first_meta = (b_meta[0] if b_meta else {}) or {}
+            print(
+                f"[BATCH {batch_idx}/{total_batches}] size={len(b_docs)} "
+                f"first_source={first_meta.get('source','')} first_title={first_meta.get('title','')[:40]}"
+            )
+
         vectors = embed_with_ollama(b_docs, args.embed_model, args.ollama_url)
         collection.upsert(ids=b_ids, documents=b_docs, metadatas=b_meta, embeddings=vectors)
 
-    print(f"[OK] 完成。collection={args.collection}, total={collection.count()}")
+        if args.show_batch:
+            print(f"[BATCH {batch_idx}/{total_batches}] upsert done")
+
+    after_count = collection.count()
+    print("=" * 90)
+    print(f"[OK] 完成。collection={args.collection}")
+    print(f"[INFO] 写入前向量数: {before_count}")
+    print(f"[INFO] 当前向量总数: {after_count}")
+    print(f"[INFO] 本次新增(估算): {after_count - before_count}")
+    print("=" * 90)
 
 
 if __name__ == "__main__":

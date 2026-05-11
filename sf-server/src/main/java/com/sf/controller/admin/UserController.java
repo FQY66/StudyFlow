@@ -1,15 +1,15 @@
 package com.sf.controller.admin;
 
 import com.sf.dto.UserDTO;
+import com.sf.dto.UserLoginDTO;
+import com.sf.dto.UserPageQueryDTO;
 import com.sf.result.PageResult;
 import com.sf.result.Result;
 import com.sf.service.UserService;
-import com.sf.dto.UserLoginDTO;
-import com.sf.dto.UserPageQueryDTO;
+import com.sf.vo.UserVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import com.sf.vo.UserVO;
 
 @RestController
 @RequestMapping("/admin")

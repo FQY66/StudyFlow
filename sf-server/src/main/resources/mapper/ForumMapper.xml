@@ -69,7 +69,8 @@
     </select>
 
     <select id="listCommentsByPostId" resultType="com.sf.vo.ForumCommentVO" parameterType="java.lang.Long">
-        select fc.content,
+        select fc.id,
+               fc.content,
                fc.create_time,
                fc.author_id,
                u.name as authorName,

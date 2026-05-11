@@ -26,6 +26,12 @@ public class ResearchNewsController {
         return Result.success(researchNewsService.getById(id));
     }
 
+    @PutMapping("/increaseClick")
+    public Result increaseClick(@RequestParam Integer id) {
+        researchNewsService.increaseClickCount(id);
+        return Result.success();
+    }
+
     @PostMapping("/save")
     public Result save(@RequestBody ResearchNews researchNews) {
         log.info("新增研究新闻Controller层: {}", researchNews);

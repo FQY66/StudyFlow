@@ -6,6 +6,7 @@ import com.sf.dto.ProjectPageQueryDTO;
 import com.sf.entity.ProjectSignup;
 import com.sf.entity.ProjectStudy;
 import com.sf.mapper.ProjectMapper;
+import com.sf.mapper.UserMapper;
 import com.sf.result.PageResult;
 import com.sf.service.ProjectService;
 import com.sf.vo.ProjectStudyVO;
@@ -20,6 +21,8 @@ import java.util.List;
 public class ProjectServiceImpl implements ProjectService {
     @Autowired
     private ProjectMapper projectMapper;
+    @Autowired
+    private UserMapper userMapper;
     @Override
     public PageResult pageQuery(ProjectPageQueryDTO projectPageQueryDTO) {
         log.info("分页查询项目Service层: {}", projectPageQueryDTO);
@@ -85,6 +88,10 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void signup(Integer projectId, Integer userId) {
         log.info("报名项目Service层: projectId={}, userId={}", projectId, userId);
+        ProjectStudyVO project = projectMapper.getById(projectId);
+        if (project == null) {
+            throw new IllegalArgumentException("项目不存在");
+        }
         ProjectSignup projectSignup = new ProjectSignup();
         projectSignup.setProjectId(Long.valueOf(projectId));
         projectSignup.setUserId(Long.valueOf(userId));
@@ -102,5 +109,35 @@ public class ProjectServiceImpl implements ProjectService {
     public void cancelSignup(Integer projectId, Integer userId) {
         log.info("取消报名项目Service层: projectId={}, userId={}", projectId, userId);
         projectMapper.cancelSignup(projectId, userId);
+    }
+
+    @Override
+    public void increaseClickCount(Integer id) {
+        projectMapper.increaseClickCount(id);
+    }
+
+    @Override
+    public void increaseLikeCount(Integer id) {
+        projectMapper.increaseLikeCount(id);
+    }
+
+    @Override
+    public List<ProjectStudyVO> getSignedUpProjectsByUserId(Integer userId) {
+        return projectMapper.getSignedUpProjectsByUserId(userId);
+    }
+
+    @Override
+    public Integer countAllProjects() {
+        return projectMapper.countAllProjects();
+    }
+
+    @Override
+    public Integer countTotalClick() {
+        return projectMapper.countTotalClick();
+    }
+
+    @Override
+    public Integer countTotalParticipants() {
+        return projectMapper.countTotalParticipants();
     }
 }

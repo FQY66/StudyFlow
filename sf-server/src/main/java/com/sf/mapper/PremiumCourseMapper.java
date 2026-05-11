@@ -20,4 +20,6 @@ public interface PremiumCourseMapper {
     void update(PremiumCourse premiumCourse);
 
     void delete(Integer id);
+
+    void increaseClickCount(Integer id);
 }

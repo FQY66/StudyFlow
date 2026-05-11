@@ -6,4 +6,6 @@ public interface OnlineStatusService {
     void markOffline(Long userId);
 
     boolean isOnline(Long userId);
+
+    long countOnlineUsers();
 }

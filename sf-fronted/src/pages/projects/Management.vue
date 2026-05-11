@@ -109,7 +109,12 @@ watch(
 
 const handleCardClick = (project: ProjectCard) => {
   const isStudentView = route.path.startsWith('/student')
-  const detailPath = isStudentView ? `/student/projects/detail/${project.id}` : `/projects/detail/${project.id}`
+  const isTeacherView = route.path.startsWith('/teacher')
+  const detailPath = isStudentView
+    ? `/student/projects/detail/${project.id}`
+    : isTeacherView
+      ? `/teacher/projects/detail/${project.id}`
+      : `/projects/detail/${project.id}`
   router.push(detailPath)
 }
 

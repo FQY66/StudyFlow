@@ -10,5 +10,7 @@ import java.util.List;
 public interface PrivateMessageMapper {
     void insert(PrivateMessage message);
 
+    void markConversationAsRead(Long userId, Long friendId);
+
     List<PrivateMessageVO> listConversation(Long userId, Long friendId);
 }

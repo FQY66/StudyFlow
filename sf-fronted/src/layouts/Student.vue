@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, User, Camera, SwitchButton, ArrowRight, Search } from '@element-plus/icons-vue'
 import { messageIcon } from '../components/icons'
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,12 +18,49 @@ const quickEntries = [
   { label: 'AI智能问答', path: '/student/sf/ai' },
 ]
 
+interface FriendPreview {
+  userId: number
+  name?: string
+  username?: string
+  email?: string
+  avatar?: string
+  online?: boolean
+  lastMessage?: string
+  lastMessageTime?: string
+  unreadCount?: number
+  lastMessageIsRead?: number
+}
+
 const toolbarKeyword = ref('')
 const avatarMenuVisible = ref(false)
 const profileDialogVisible = ref(false)
 const messagePanelVisible = ref(false)
+const messagePanelHoverLock = ref(false)
 let messageNavigateTimer: number | undefined
+let messagePanelHideTimer: number | undefined
+let messagePanelHoverTimer: number | undefined
 const avatarInputRef = ref<HTMLInputElement | null>(null)
+const messagePreviewLoading = ref(false)
+const messagePreviewList = ref<FriendPreview[]>([])
+const messagePreviewError = ref('')
+let previewPollingTimer: number | undefined
+
+interface ApiResult<T> {
+  code: number
+  msg?: string
+  data: T
+}
+
+interface SignedProject {
+  id: number
+  theme?: string
+  category?: string
+  status?: string
+  createTime?: string
+}
+
+const signedProjects = ref<SignedProject[]>([])
+const loadingSignups = ref(false)
 
 watch(
   () => route.query.q,
@@ -31,6 +69,24 @@ watch(
   },
   { immediate: true }
 )
+
+watch(messagePanelVisible, (visible) => {
+  if (visible) {
+    void fetchMessagePreview()
+    startPreviewPolling()
+  } else {
+    stopPreviewPolling()
+    messagePanelHoverLock.value = false
+    if (messagePanelHideTimer) {
+      window.clearTimeout(messagePanelHideTimer)
+      messagePanelHideTimer = undefined
+    }
+    if (messagePanelHoverTimer) {
+      window.clearTimeout(messagePanelHoverTimer)
+      messagePanelHoverTimer = undefined
+    }
+  }
+})
 
 const applyToolbarSearch = () => {
   const nextQuery = { ...route.query }
@@ -99,12 +155,174 @@ const userRole = computed(() => {
   return roleMap[role] || role || '学生'
 })
 
-const openProfile = () => {
+const normalizePreview = (value?: string) => {
+  const text = (value || '').trim()
+  if (!text) return '暂无新消息'
+  return text.length > 28 ? `${text.slice(0, 28)}...` : text
+}
+
+const previewTitle = computed(() => {
+  if (hasUnreadPreviews.value) {
+    return `你有 ${unreadPreviews.value.length} 个会话未读`
+  }
+  return latestPreview.value ? '最近消息预览' : '暂无消息'
+})
+
+const previewSubtitle = computed(() => {
+  if (hasUnreadPreviews.value) {
+    return '只显示未读会话，全部已读时回到最近消息预览'
+  }
+  return '鼠标悬停查看预览，点击进入完整消息页'
+})
+
+const formatPreviewTime = (value?: string) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${month}-${day} ${hour}:${minute}`
+}
+
+const unreadMessageCount = computed(() => {
+  return messagePreviewList.value.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0)
+})
+
+const sortedMessagePreviews = computed(() => {
+  return [...messagePreviewList.value].sort((a, b) => {
+    const aUnread = Number(a.unreadCount || 0)
+    const bUnread = Number(b.unreadCount || 0)
+    if (aUnread > 0 || bUnread > 0) {
+      if (aUnread !== bUnread) return bUnread - aUnread
+    } else if (a.online !== b.online) {
+      return Number(b.online) - Number(a.online)
+    }
+    const aTime = new Date(a.lastMessageTime || '').getTime()
+    const bTime = new Date(b.lastMessageTime || '').getTime()
+    if (!Number.isNaN(aTime) && !Number.isNaN(bTime) && aTime !== bTime) {
+      return bTime - aTime
+    }
+    return (a.name || '').localeCompare(b.name || '', 'zh-Hans-CN')
+  })
+})
+
+const unreadPreviews = computed(() => sortedMessagePreviews.value.filter((item) => Number(item.unreadCount || 0) > 0))
+const latestPreview = computed(() => unreadPreviews.value[0] || sortedMessagePreviews.value[0] || null)
+const hasUnreadPreviews = computed(() => unreadPreviews.value.length > 0)
+
+const fetchMessagePreview = async () => {
+  const userId = Number(sessionStorage.getItem('id') || localStorage.getItem('id') || sessionStorage.getItem('userId') || localStorage.getItem('userId') || 0)
+  if (!userId) {
+    messagePreviewList.value = []
+    return
+  }
+
+  messagePreviewLoading.value = true
+  messagePreviewError.value = ''
+  try {
+    const { data } = await request.get<ApiResult<FriendPreview[]>>('/chat/friends')
+    if (data?.code === 1 && Array.isArray(data.data)) {
+      messagePreviewList.value = data.data.map((item: any) => ({
+        userId: Number(item.userId),
+        name: item.name,
+        username: item.username,
+        email: item.email,
+        avatar: item.avatar,
+        online: !!item.online,
+        lastMessage: item.lastMessage,
+        lastMessageTime: item.lastMessageTime,
+        unreadCount: Number(item.unreadCount || 0),
+        lastMessageIsRead: Number(item.lastMessageIsRead || 0)
+      }))
+    } else {
+      messagePreviewList.value = []
+    }
+  } catch {
+    messagePreviewList.value = []
+    messagePreviewError.value = '消息预览加载失败'
+  } finally {
+    messagePreviewLoading.value = false
+  }
+}
+
+const fetchMySignups = async () => {
+  const userId = Number(sessionStorage.getItem('id') || localStorage.getItem('id') || sessionStorage.getItem('userId') || localStorage.getItem('userId') || 0)
+  if (!userId) {
+    signedProjects.value = []
+    return
+  }
+
+  loadingSignups.value = true
+  try {
+    const { data } = await request.get<ApiResult<SignedProject[]>>('/project/mySignups', {
+      params: { userId }
+    })
+    if (data?.code === 1 && Array.isArray(data.data)) {
+      signedProjects.value = data.data
+    } else {
+      signedProjects.value = []
+    }
+  } catch {
+    signedProjects.value = []
+  } finally {
+    loadingSignups.value = false
+  }
+}
+
+const openProfile = async () => {
   avatarMenuVisible.value = false
   profileDialogVisible.value = true
+  await fetchMySignups()
+}
+
+const startPreviewPolling = () => {
+  if (previewPollingTimer) window.clearInterval(previewPollingTimer)
+  previewPollingTimer = window.setInterval(() => {
+    if (messagePanelVisible.value) {
+      void fetchMessagePreview()
+    }
+  }, 8000)
+}
+
+const stopPreviewPolling = () => {
+  if (previewPollingTimer) {
+    window.clearInterval(previewPollingTimer)
+    previewPollingTimer = undefined
+  }
+}
+
+const openMessagePanel = async () => {
+  messagePanelVisible.value = true
+  await fetchMessagePreview()
+}
+
+const scheduleHideMessagePanel = () => {
+  if (messagePanelHideTimer) {
+    window.clearTimeout(messagePanelHideTimer)
+  }
+  messagePanelHideTimer = window.setTimeout(() => {
+    if (!messagePanelHoverLock.value) {
+      messagePanelVisible.value = false
+    }
+  }, 180)
+}
+
+const cancelHideMessagePanel = () => {
+  if (messagePanelHideTimer) {
+    window.clearTimeout(messagePanelHideTimer)
+    messagePanelHideTimer = undefined
+  }
 }
 
 const closeMessagePanel = () => {
+  cancelHideMessagePanel()
+  if (messagePanelHoverTimer) {
+    window.clearTimeout(messagePanelHoverTimer)
+    messagePanelHoverTimer = undefined
+  }
+  messagePanelHoverLock.value = false
   messagePanelVisible.value = false
 }
 
@@ -114,10 +332,38 @@ const openMessageWindowPage = () => {
   }
 
   messagePanelVisible.value = true
+  messagePanelHoverLock.value = false
   messageNavigateTimer = window.setTimeout(() => {
     messagePanelVisible.value = false
     router.push('/student/square/chat')
   }, 200)
+}
+
+const lockMessagePanel = () => {
+  if (messagePanelHideTimer) {
+    window.clearTimeout(messagePanelHideTimer)
+    messagePanelHideTimer = undefined
+  }
+  if (messagePanelHoverTimer) {
+    window.clearTimeout(messagePanelHoverTimer)
+    messagePanelHoverTimer = undefined
+  }
+  messagePanelHoverLock.value = true
+  messagePanelVisible.value = true
+}
+
+const unlockMessagePanel = () => {
+  if (messagePanelHoverTimer) {
+    window.clearTimeout(messagePanelHoverTimer)
+  }
+  messagePanelHoverTimer = window.setTimeout(() => {
+    messagePanelHoverLock.value = false
+    messagePanelHideTimer = window.setTimeout(() => {
+      if (!messagePanelHoverLock.value) {
+        messagePanelVisible.value = false
+      }
+    }, 120)
+  }, 120)
 }
 
 const triggerAvatarUpload = () => {
@@ -167,6 +413,7 @@ const logout = async () => {
       window.clearTimeout(messageNavigateTimer)
       messageNavigateTimer = undefined
     }
+    stopPreviewPolling()
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('role')
     sessionStorage.removeItem('userRole')
@@ -217,13 +464,14 @@ const logout = async () => {
         </form>
 
         <div class="avatar-area">
-          <div class="message-popover-anchor" @mouseenter="messagePanelVisible = true" @mouseleave="messagePanelVisible = false">
+          <div class="message-popover-anchor" @mouseenter="messagePanelVisible = true" @mouseleave="scheduleHideMessagePanel">
             <el-popover
               v-model:visible="messagePanelVisible"
               placement="left-start"
               trigger="manual"
               :width="420"
               popper-class="message-popover"
+              :show-arrow="false"
             >
               <template #reference>
                 <button
@@ -233,29 +481,94 @@ const logout = async () => {
                   aria-label="打开消息窗口"
                   @click="openMessageWindowPage"
                 >
-                  <el-icon>
-                    <messageIcon />
-                  </el-icon>
+                  <el-badge :value="unreadMessageCount" :hidden="unreadMessageCount <= 0" :max="99" class="message-entry-badge">
+                    <el-icon>
+                      <messageIcon />
+                    </el-icon>
+                  </el-badge>
                 </button>
               </template>
 
-              <div class="message-panel-card">
+              <div
+                class="message-panel-card"
+                @mouseenter="messagePanelHoverLock = true; cancelHideMessagePanel()"
+                @mouseleave="messagePanelHoverLock = false; scheduleHideMessagePanel()"
+              >
                 <div class="message-panel-header">
                   <div>
-                    <div class="message-panel-title">消息窗口</div>
-                    <div class="message-panel-subtitle">鼠标悬停查看预览，点击进入完整消息页</div>
+                    <div class="message-panel-title">{{ previewTitle }}</div>
+                    <div class="message-panel-subtitle">{{ previewSubtitle }}</div>
                   </div>
                   <button type="button" class="message-panel-close" @click="closeMessagePanel">×</button>
                 </div>
 
                 <div class="message-panel-body">
-                  <div class="message-panel-empty">
+                  <div v-if="messagePreviewLoading" class="message-panel-loading">
+                    <el-skeleton animated :rows="3" />
+                  </div>
+
+                  <div v-else-if="messagePreviewError" class="message-panel-empty">
                     <el-icon class="message-panel-icon">
                       <messageIcon />
                     </el-icon>
-                    <div class="message-panel-empty-title">点击可进入消息窗口</div>
-                    <div class="message-panel-empty-text">这里可以放最新会话预览、系统通知与未读消息入口。</div>
+                    <div class="message-panel-empty-title">{{ messagePreviewError }}</div>
+                    <div class="message-panel-empty-text">请稍后重试消息预览。</div>
                   </div>
+
+                  <template v-else>
+                    <div v-if="hasUnreadPreviews" class="message-panel-unread-list">
+                      <div
+                        v-for="item in unreadPreviews"
+                        :key="item.userId"
+                        class="message-panel-preview message-panel-preview-list-item"
+                        @click="openMessageWindowPage"
+                      >
+                        <div class="message-panel-preview-head">
+                          <div class="message-panel-preview-title">
+                            <el-avatar :size="42" :src="item.avatar || ''" />
+                            <div class="message-panel-preview-user">
+                              <div class="message-panel-preview-name">{{ item.name || item.username || '未知用户' }}</div>
+                              <div class="message-panel-preview-meta">
+                                <span>{{ item.online ? '在线' : '离线' }}</span>
+                                <span v-if="item.lastMessageTime">{{ formatPreviewTime(item.lastMessageTime) }}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span class="message-panel-preview-badge">{{ (item.unreadCount || 0) > 99 ? '99+' : (item.unreadCount || 0) }}</span>
+                        </div>
+                        <div class="message-panel-preview-text unread">
+                          {{ normalizePreview(item.lastMessage) }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-else-if="latestPreview" class="message-panel-preview" @click="openMessageWindowPage">
+                      <div class="message-panel-preview-head">
+                        <div class="message-panel-preview-title">
+                          <el-avatar :size="42" :src="latestPreview.avatar || ''" />
+                          <div class="message-panel-preview-user">
+                            <div class="message-panel-preview-name">{{ latestPreview.name || latestPreview.username || '未知用户' }}</div>
+                            <div class="message-panel-preview-meta">
+                              <span>{{ latestPreview.online ? '在线' : '离线' }}</span>
+                              <span v-if="latestPreview.lastMessageTime">{{ formatPreviewTime(latestPreview.lastMessageTime) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="message-panel-preview-text">
+                        {{ normalizePreview(latestPreview.lastMessage) }}
+                      </div>
+                      <div class="message-panel-preview-footer">点击可进入完整消息页</div>
+                    </div>
+
+                    <div v-else class="message-panel-empty">
+                      <el-icon class="message-panel-icon">
+                        <messageIcon />
+                      </el-icon>
+                      <div class="message-panel-empty-title">暂无消息</div>
+                      <div class="message-panel-empty-text">这里会显示最新会话预览、系统通知与未读消息入口。</div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </el-popover>
@@ -329,6 +642,28 @@ const logout = async () => {
           <div class="profile-name">{{ userName }}</div>
           <div class="profile-role">{{ userRole }}</div>
         </div>
+      </div>
+
+      <div class="signup-panel">
+        <div class="signup-title">我已报名的项目</div>
+        <el-skeleton v-if="loadingSignups" animated :rows="3" />
+        <template v-else>
+          <el-empty v-if="!signedProjects.length" description="暂无已报名项目" />
+          <div v-else class="signup-list">
+            <div
+              v-for="item in signedProjects"
+              :key="item.id"
+              class="signup-item"
+              @click="router.push(`/student/projects/detail/${item.id}`)"
+            >
+              <div class="signup-item-title">{{ item.theme || '未命名项目' }}</div>
+              <div class="signup-item-meta">
+                <span>{{ item.category || '未分类' }}</span>
+                <span>{{ item.status || '未知状态' }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </el-dialog>
   </div>
@@ -571,6 +906,10 @@ const logout = async () => {
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
+.message-entry-badge {
+  display: inline-flex;
+}
+
 .message-entry:hover,
 .message-entry.active {
   background: #eff6ff;
@@ -795,6 +1134,21 @@ const logout = async () => {
   padding: 22px;
 }
 
+.message-panel-unread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.message-panel-loading {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+}
+
 .message-panel-empty {
   display: flex;
   flex-direction: column;
@@ -820,6 +1174,101 @@ const logout = async () => {
   line-height: 1.7;
   color: #6b7280;
   max-width: 260px;
+}
+
+.message-panel-unread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.message-panel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.message-panel-preview-list-item {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid #f3d5da;
+  background: #fff7f8;
+}
+
+.message-panel-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.message-panel-preview-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.message-panel-preview-user {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.message-panel-preview-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.message-panel-preview-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.message-panel-preview-badge {
+  flex-shrink: 0;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+
+.message-panel-preview-text {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #334155;
+  line-height: 1.6;
+  font-size: 14px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+}
+
+.message-panel-preview-text.unread {
+  background: #fff1f2;
+  color: #be123c;
+  font-weight: 600;
+}
+
+.message-panel-preview-footer {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: right;
 }
 
 .profile-panel {
@@ -864,6 +1313,52 @@ const logout = async () => {
 .profile-role {
   color: #6b7280;
   font-size: 13px;
+}
+
+.signup-panel {
+  margin-top: 18px;
+}
+
+.signup-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.signup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.signup-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.signup-item:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.1);
+}
+
+.signup-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.signup-item-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 @media (max-width: 1200px) {

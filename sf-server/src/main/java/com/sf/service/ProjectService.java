@@ -27,4 +27,16 @@ public interface ProjectService {
     void approveSignup(Integer projectId, Integer userId);
 
     void cancelSignup(Integer projectId, Integer userId);
+
+    void increaseClickCount(Integer id);
+
+    void increaseLikeCount(Integer id);
+
+    java.util.List<ProjectStudyVO> getSignedUpProjectsByUserId(Integer userId);
+
+    Integer countAllProjects();
+
+    Integer countTotalClick();
+
+    Integer countTotalParticipants();
 }

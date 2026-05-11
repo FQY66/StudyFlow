@@ -31,6 +31,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return session != null && session.isOpen();
     }
 
+    public static int countOnlineUsers() {
+        return sessionMap.size();
+    }
+
+    public static boolean hasActiveSession(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        WebSocketSession session = sessionMap.get(userId);
+        return session != null && session.isOpen();
+    }
+
     public static void sendToUser(Long userId, String payload) {
         if (userId == null || payload == null) {
             return;

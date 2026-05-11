@@ -49,4 +49,10 @@
     <delete id="delete">
         delete from research_news where id = #{id}
     </delete>
+
+    <update id="increaseClickCount">
+        update research_news
+        set click_count = ifnull(click_count, 0) + 1
+        where id = #{id}
+    </update>
 </mapper>

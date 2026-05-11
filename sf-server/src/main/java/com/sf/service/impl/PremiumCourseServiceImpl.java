@@ -57,4 +57,9 @@ public class PremiumCourseServiceImpl implements PremiumCourseService {
     public void delete(Integer id) {
         premiumCourseMapper.delete(id);
     }
+
+    @Override
+    public void increaseClickCount(Integer id) {
+        premiumCourseMapper.increaseClickCount(id);
+    }
 }

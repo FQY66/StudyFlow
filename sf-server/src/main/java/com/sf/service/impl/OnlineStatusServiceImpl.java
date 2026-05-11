@@ -2,9 +2,13 @@ package com.sf.service.impl;
 
 import com.sf.service.OnlineStatusService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -39,6 +43,22 @@ public class OnlineStatusServiceImpl implements OnlineStatusService {
         }
         Boolean exists = redisTemplate.hasKey(key(userId));
         return Boolean.TRUE.equals(exists);
+    }
+
+    @Override
+    public long countOnlineUsers() {
+        Long count = (Long) redisTemplate.execute((RedisCallback<Long>) connection -> {
+            long result = 0L;
+            ScanOptions options = ScanOptions.scanOptions().match(ONLINE_KEY_PREFIX + "*").count(1000).build();
+            try (var cursor = connection.scan(options)) {
+                while (cursor.hasNext()) {
+                    cursor.next();
+                    result++;
+                }
+            }
+            return result;
+        });
+        return count == null ? 0L : count;
     }
 
     private String key(Long userId) {

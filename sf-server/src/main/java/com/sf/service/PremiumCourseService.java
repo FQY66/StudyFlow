@@ -16,4 +16,6 @@ public interface PremiumCourseService {
     void update(PremiumCourse premiumCourse);
 
     void delete(Integer id);
+
+    void increaseClickCount(Integer id);
 }

@@ -26,6 +26,12 @@ public class PremiumCourseController {
         return Result.success(premiumCourseService.getById(id));
     }
 
+    @PutMapping("/increaseClick")
+    public Result increaseClick(@RequestParam Integer id) {
+        premiumCourseService.increaseClickCount(id);
+        return Result.success();
+    }
+
     @PostMapping("/save")
     public Result save(@RequestBody PremiumCourse premiumCourse) {
         premiumCourseService.insert(premiumCourse);

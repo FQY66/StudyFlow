@@ -22,6 +22,8 @@ public interface FriendChatService {
 
     void sendMessageByUserId(Long senderId, PrivateMessageDTO dto);
 
+    void sendShareMessageByUserId(Long senderId, Long toUserId, String content);
+
     List<PrivateMessageVO> listConversation(Long friendId);
 
     List<PrivateMessageVO> listConversationByUserId(Long userId, Long friendId);

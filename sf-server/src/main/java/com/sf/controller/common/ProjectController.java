@@ -1,11 +1,11 @@
 package com.sf.controller.common;
 
 import com.sf.dto.ProjectPageQueryDTO;
-import com.sf.entity.ProjectSignup;
 import com.sf.entity.ProjectStudy;
 import com.sf.result.PageResult;
 import com.sf.result.Result;
 import com.sf.service.ProjectService;
+import com.sf.service.OnlineStatusService;
 import com.sf.vo.ProjectStudyVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectController {
     @Autowired
     private ProjectService projectService;
+
+    @Autowired
+    private OnlineStatusService onlineStatusService;
 
     @GetMapping("/page")
     public Result<PageResult> page(ProjectPageQueryDTO projectPageQueryDTO) {
@@ -30,6 +33,12 @@ public class ProjectController {
         log.info("根据id查询项目Controller层: {}", id);
         ProjectStudyVO project = projectService.getById(id);
         return Result.success(project);
+    }
+
+    @PutMapping("/increaseClick")
+    public Result increaseClick(@RequestParam Integer id) {
+        projectService.increaseClickCount(id);
+        return Result.success();
     }
 
     @GetMapping("/categories")
@@ -84,5 +93,29 @@ public class ProjectController {
         log.info("取消报名项目Controller层: projectId={}, userId={}", projectId, userId);
         projectService.cancelSignup(projectId, userId);
         return Result.success();
+    }
+
+    @PutMapping("/increaseLike")
+    public Result increaseLike(@RequestParam Integer id) {
+        log.info("项目点赞+1 Controller层: {}", id);
+        projectService.increaseLikeCount(id);
+        return Result.success();
+    }
+
+    @GetMapping("/mySignups")
+    public Result<java.util.List<ProjectStudyVO>> mySignups(@RequestParam Integer userId) {
+        log.info("查询用户已报名项目Controller层: {}", userId);
+        return Result.success(projectService.getSignedUpProjectsByUserId(userId));
+    }
+
+    @GetMapping("/stats")
+    public Result<java.util.Map<String, Integer>> stats() {
+        log.info("查询项目统计数据Controller层");
+        java.util.Map<String, Integer> stats = new java.util.HashMap<>();
+        stats.put("totalProjects", projectService.countAllProjects());
+        stats.put("onlineVisitors", Math.toIntExact(onlineStatusService.countOnlineUsers()));
+        stats.put("totalClicks", projectService.countTotalClick());
+        stats.put("participants", projectService.countTotalParticipants());
+        return Result.success(stats);
     }
 }

@@ -57,6 +57,28 @@ const getAssistantText = (payload: RagChatResponse) => {
   )
 }
 
+const formatAssistantText = (raw: string) => {
+  if (!raw) return ''
+
+  let text = raw
+
+  // 删除 markdown 痕迹
+  text = text.replace(/\*\*(.*?)\*\*/g, '$1')
+  text = text.replace(/__(.*?)__/g, '$1')
+  text = text.replace(/`{1,3}([\s\S]*?)`{1,3}/g, '$1')
+  text = text.replace(/^\s{0,3}#{1,6}\s*/gm, '')
+
+  // 统一编号格式，并强制分点换行
+  text = text.replace(/^\s*(\d+)\s*[)\.、]\s*/gm, '($1) ')
+  text = text.replace(/(?<!\n)(?=\(\d+\)\s*)/g, '\n')
+  text = text.replace(/\n(?=\(\d+\)\s*)/g, '\n\n')
+
+  // 压缩过多空行
+  text = text.replace(/\n{3,}/g, '\n\n')
+
+  return text.trim()
+}
+
 const updateAssistantMessage = (assistantId: number, patch: Partial<ChatItem>) => {
   const index = messages.value.findIndex((item) => item.id === assistantId)
   if (index === -1) return
@@ -138,7 +160,7 @@ const sendMessage = async () => {
 
       if (eventName === 'done') {
         updateAssistantMessage(assistantId, {
-          content: assistantText || 'AI 暂时没有返回结果，请稍后重试。',
+          content: formatAssistantText(assistantText) || 'AI 暂时没有返回结果，请稍后重试。',
           status: '已完成'
         })
         return
@@ -149,14 +171,14 @@ const sendMessage = async () => {
 
       if (payload.type === 'delta' && payload.content) {
         assistantText += payload.content
-        updateAssistantMessage(assistantId, { content: assistantText, status: '生成中' })
+        updateAssistantMessage(assistantId, { content: formatAssistantText(assistantText), status: '生成中' })
         return
       }
 
       const textContent = getAssistantText(payload)
       if (textContent) {
         assistantText = textContent
-        updateAssistantMessage(assistantId, { content: assistantText, status: '生成中' })
+        updateAssistantMessage(assistantId, { content: formatAssistantText(assistantText), status: '生成中' })
       }
     }
 

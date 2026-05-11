@@ -1,6 +1,7 @@
 package com.sf.service.impl;
 
 import com.sf.context.BaseContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sf.dto.FriendRequestDTO;
 import com.sf.dto.PrivateMessageDTO;
 import com.sf.entity.FriendRelation;
@@ -35,6 +36,8 @@ public class FriendChatServiceImpl implements FriendChatService {
 
     @Autowired
     private OnlineStatusService onlineStatusService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void addFriend(FriendRequestDTO dto) {
@@ -154,6 +157,42 @@ public class FriendChatServiceImpl implements FriendChatService {
     }
 
     @Override
+    public void sendShareMessageByUserId(Long senderId, Long toUserId, String content) {
+        if (senderId == null || toUserId == null || content == null || content.trim().isEmpty()) {
+            return;
+        }
+
+        FriendRelation relation = friendMapper.findRelation(senderId, toUserId);
+        if (relation == null || relation.getStatus() == null || relation.getStatus() != 1) {
+            return;
+        }
+
+        PrivateMessage message = PrivateMessage.builder()
+                .senderId(senderId)
+                .receiverId(toUserId)
+                .content(content.trim())
+                .isRead(0)
+                .createTime(LocalDateTime.now())
+                .build();
+        privateMessageMapper.insert(message);
+
+        PrivateMessageVO vo = PrivateMessageVO.builder()
+                .id(message.getId())
+                .senderId(message.getSenderId())
+                .receiverId(message.getReceiverId())
+                .content(message.getContent())
+                .isRead(message.getIsRead())
+                .createTime(message.getCreateTime() == null ? null : message.getCreateTime().toString())
+                .build();
+        try {
+            String payload = objectMapper.writeValueAsString(vo);
+            ChatWebSocketHandler.sendToUser(toUserId, payload);
+        } catch (Exception ignored) {
+            // ignore
+        }
+    }
+
+    @Override
     public List<PrivateMessageVO> listConversation(Long friendId) {
         Long userId = BaseContext.getCurrentId();
         return listConversationByUserId(userId, friendId);
@@ -168,6 +207,7 @@ public class FriendChatServiceImpl implements FriendChatService {
         if (relation == null || relation.getStatus() == null || relation.getStatus() != 1) {
             return Collections.emptyList();
         }
+        privateMessageMapper.markConversationAsRead(userId, friendId);
         return privateMessageMapper.listConversation(userId, friendId);
     }
 }

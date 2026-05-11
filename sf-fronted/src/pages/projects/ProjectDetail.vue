@@ -32,11 +32,21 @@ interface ProjectStudyVO {
   projectSignupList?: ProjectSignupUser[]
 }
 
+interface ProjectShareCard {
+  type: 'project_share'
+  projectId: number
+  title: string
+  summary: string
+  cover: string
+  link: string
+}
+
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const joining = ref(false)
 const project = ref<ProjectStudyVO | null>(null)
+const sharing = ref(false)
 
 const id = computed(() => String(route.params.id ?? ''))
 const currentUserId = computed(() => {
@@ -57,14 +67,13 @@ const hasSignedUp = computed(() => {
 })
 
 const joinButtonText = computed(() => {
-  if (currentUserRole.value && currentUserRole.value !== '学生') return '仅学生可报名'
   if (hasSignedUp.value) return '已报名'
   if (project.value?.status && project.value.status !== '已发布') return '暂不可报名'
   return '我要报名'
 })
 
 const joinButtonDisabled = computed(() => {
-  return joining.value || !!currentUserRole.value && currentUserRole.value !== '学生' || hasSignedUp.value || project.value?.status !== '已发布'
+  return joining.value || hasSignedUp.value || project.value?.status !== '已发布'
 })
 
 const resolveFileUrl = (path?: string) => {
@@ -93,6 +102,63 @@ const renderRichText = (html?: string, fallback = '暂无内容') => {
   return doc.body.innerHTML || `<p>${fallback}</p>`
 }
 
+const stripHtml = (html?: string) => {
+  const text = (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return text
+}
+
+const buildShareCard = (): ProjectShareCard | null => {
+  if (!project.value?.id) return null
+  const link = `${window.location.origin}/student/projects/detail/${project.value.id}`
+  return {
+    type: 'project_share',
+    projectId: project.value.id,
+    title: project.value.theme || '未命名项目',
+    summary: stripHtml(project.value.introduction || project.value.content) || '查看项目详情',
+    cover: resolveFileUrl(project.value.coverPath),
+    link
+  }
+}
+
+const sendShareToFriend = async (friendId: number) => {
+  const card = buildShareCard()
+  if (!card) {
+    ElMessage.warning('项目数据未加载完成')
+    return
+  }
+  sharing.value = true
+  try {
+    const { data } = await request.post('/chat/share/project', {
+      toUserId: friendId,
+      ...card
+    })
+    if (data?.code !== 1) {
+      ElMessage.error(data?.msg || '分享失败')
+      return
+    }
+    ElMessage.success('已分享给好友')
+  } catch {
+    ElMessage.error('分享失败，请稍后再试')
+  } finally {
+    sharing.value = false
+  }
+}
+
+const shareProjectToFriend = () => {
+  ElMessage.info('请先在聊天页选择好友后再分享项目')
+}
+
+const increaseClick = async () => {
+  if (!id.value) return
+  try {
+    await request.put('/project/increaseClick', null, {
+      params: { id: id.value }
+    })
+  } catch {
+    // ignore click count failure
+  }
+}
+
 const loadDetail = async () => {
   loading.value = true
   try {
@@ -105,10 +171,31 @@ const loadDetail = async () => {
   }
 }
 
+const handleLikeProject = async () => {
+  if (!project.value?.id) return
+  try {
+    const { data } = await request.put('/project/increaseLike', null, {
+      params: { id: project.value.id }
+    })
+    if (data?.code !== 1) {
+      ElMessage.error(data?.msg || '点赞失败')
+      return
+    }
+    project.value.likeCount = (project.value.likeCount ?? 0) + 1
+    ElMessage.success('点赞成功')
+  } catch {
+    ElMessage.error('点赞失败，请稍后再试')
+  }
+}
+
 const handleJoinProject = async () => {
   if (!project.value) return
-  if (currentUserRole.value && currentUserRole.value !== '学生') {
-    ElMessage.warning('只有学生身份才能报名项目')
+  if (!currentUserRole.value) {
+    ElMessage.warning('请先登录后再报名')
+    return
+  }
+  if (!['学生', '老师'].includes(currentUserRole.value)) {
+    ElMessage.warning('当前身份暂不支持报名项目')
     return
   }
   if (!currentUserId.value) {
@@ -147,7 +234,8 @@ const handleJoinProject = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await increaseClick()
   loadDetail()
 })
 
@@ -199,13 +287,13 @@ watch(
                 {{ joining ? '报名中...' : joinButtonText }}
               </button>
               <div class="project-actions-right">
-                <button class="icon-action-button type-like" type="button" aria-label="收藏">
+                <button class="icon-action-button type-like" type="button" aria-label="点赞" @click="handleLikeProject">
                   <el-icon class="icon-action-svg"><component :is="likeIcon" /></el-icon>
-                  <span>收藏</span>
+                  <span>点赞</span>
                 </button>
-                <button class="icon-action-button type-share" type="button" aria-label="分享">
+                <button class="icon-action-button type-share" type="button" aria-label="分享" @click="shareProjectToFriend">
                   <el-icon class="icon-action-svg"><component :is="shareIcon" /></el-icon>
-                  <span>分享</span>
+                  <span>{{ sharing ? '分享中...' : '分享' }}</span>
                 </button>
               </div>
             </div>

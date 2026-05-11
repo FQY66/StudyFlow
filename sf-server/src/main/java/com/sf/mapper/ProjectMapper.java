@@ -8,7 +8,6 @@ import com.sf.entity.ProjectStudy;
 import com.sf.enumeration.OperationType;
 import com.sf.vo.ProjectSignupUserVO;
 import com.sf.vo.ProjectStudyVO;
-import com.sf.vo.UserVO;
 import org.apache.ibatis.annotations.Mapper;
 import java.util.List;
 
@@ -37,4 +36,16 @@ public interface ProjectMapper {
     void approveSignup(Integer projectId, Integer userId);
 
     void cancelSignup(Integer projectId, Integer userId);
+
+    void increaseClickCount(Integer id);
+
+    void increaseLikeCount(Integer id);
+
+    List<ProjectStudyVO> getSignedUpProjectsByUserId(Integer userId);
+
+    Integer countAllProjects();
+
+    Integer countTotalClick();
+
+    Integer countTotalParticipants();
 }

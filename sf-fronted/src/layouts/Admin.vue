@@ -288,7 +288,7 @@ const logout = async () => {
                 </div>
 
                 <el-dropdown-menu class="avatar-dropdown">
-                  <el-dropdown-item class="avatar-menu-item" @click="router.push('/system/users')">
+                  <el-dropdown-item class="avatar-menu-item" @click="router.push('/system/profile')">
                     <el-icon><User /></el-icon>
                     <span>个人中心</span>
                     <el-icon class="menu-item-arrow"><ArrowRight /></el-icon>

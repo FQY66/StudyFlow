@@ -8,6 +8,14 @@
         values(#{senderId}, #{receiverId}, #{content}, #{isRead}, #{createTime})
     </insert>
 
+    <update id="markConversationAsRead">
+        update private_message
+        set is_read = 1
+        where sender_id = #{friendId}
+          and receiver_id = #{userId}
+          and is_read = 0
+    </update>
+
     <select id="listConversation" resultType="com.sf.vo.PrivateMessageVO">
         select
             id,

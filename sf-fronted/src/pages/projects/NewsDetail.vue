@@ -38,6 +38,17 @@ const typeLabel = computed(() => {
   return '资讯'
 })
 
+const increaseClick = async () => {
+  if (!id.value) return
+  try {
+    await request.put('/researchNews/increaseClick', null, {
+      params: { id: id.value }
+    })
+  } catch {
+    // ignore click count failure
+  }
+}
+
 const fetchDetail = async () => {
   loading.value = true
   try {
@@ -68,7 +79,8 @@ const renderRichText = (html?: string) => {
   return doc.body.innerHTML || '<p>暂无内容</p>'
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await increaseClick()
   void fetchDetail()
 })
 </script>

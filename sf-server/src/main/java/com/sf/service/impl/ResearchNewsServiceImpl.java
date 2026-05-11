@@ -58,4 +58,9 @@ public class ResearchNewsServiceImpl implements ResearchNewsService {
     public void delete(Integer id) {
         researchNewsMapper.delete(id);
     }
+
+    @Override
+    public void increaseClickCount(Integer id) {
+        researchNewsMapper.increaseClickCount(id);
+    }
 }

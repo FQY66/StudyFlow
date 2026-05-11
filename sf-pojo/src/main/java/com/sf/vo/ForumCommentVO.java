@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ForumCommentVO implements Serializable {
 
+    //评论ID
+    private Long id;
     //评论内容
     private String content;
     //评论时间

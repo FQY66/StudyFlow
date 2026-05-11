@@ -41,6 +41,11 @@ public class ProjectStudyVO {
     //点击量
     private Integer clickCount;
 
+    //当前用户报名状态
+    private String signupStatus;
+    //当前用户报名时间
+    private String signupTime;
+
     //报名用户列表
     private List<ProjectSignupUserVO> projectSignupList;
 }

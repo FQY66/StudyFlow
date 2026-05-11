@@ -16,4 +16,8 @@ public class FriendVO {
     private String email;
     private String avatar;
     private Boolean online;
+    private String lastMessage;
+    private String lastMessageTime;
+    private Integer unreadCount;
+    private Integer lastMessageIsRead;
 }

@@ -16,37 +16,9 @@
         </div>
       </div>
 
-      <div class="login-side-visual" aria-hidden="true">
-        <div class="hero-illustration">
-          <div class="hero-bg-circle hero-bg-circle-lg"></div>
-          <div class="hero-bg-circle hero-bg-circle-sm"></div>
-
-          <div class="hero-device">
-            <div class="hero-device-screen">
-              <div class="hero-folder hero-folder-main"></div>
-              <div class="hero-folder hero-folder-back"></div>
-              <div class="hero-check"></div>
-            </div>
-            <div class="hero-device-base"></div>
-          </div>
-
-          <div class="hero-paper hero-paper-left"></div>
-          <div class="hero-paper hero-paper-top"></div>
-        </div>
-      </div>
-
       <div class="login-side-description">
         <h3 class="desc-title">一款面向高校研学的 StudyFlow 平台</h3>
         <p class="desc-subtitle">整合项目申报、研学课程与交流社区，帮助老师与学生高效协作。</p>
-      </div>
-
-      <div class="footer-links">
-        <span class="footer-year">© {{ new Date().getFullYear() }} StudyFlow</span>
-        <div class="footer-links-right">
-          <a href="#" class="footer-link">隐私政策</a>
-          <span class="footer-dot">•</span>
-          <a href="#" class="footer-link">服务条款</a>
-        </div>
       </div>
     </div>
 
@@ -65,25 +37,13 @@
           <div class="role-switcher">
             <span class="role-switcher-label">选择身份</span>
             <div class="role-switcher-buttons">
-              <el-button
-                :type="form.role === '学生' ? 'primary' : 'default'"
-                round
-                @click="form.role = '学生'"
-              >
+              <el-button :type="form.role === '学生' ? 'primary' : 'default'" round @click="form.role = '学生'">
                 学生
               </el-button>
-              <el-button
-                :type="form.role === '老师' ? 'primary' : 'default'"
-                round
-                @click="form.role = '老师'"
-              >
+              <el-button :type="form.role === '老师' ? 'primary' : 'default'" round @click="form.role = '老师'">
                 老师
               </el-button>
-              <el-button
-                :type="form.role === '管理员' ? 'primary' : 'default'"
-                round
-                @click="form.role = '管理员'"
-              >
+              <el-button :type="form.role === '管理员' ? 'primary' : 'default'" round @click="form.role = '管理员'">
                 管理员
               </el-button>
             </div>
@@ -91,20 +51,11 @@
 
           <el-form :model="form" label-position="top" class="login-form">
             <el-form-item label="个人账号" prop="email">
-              <el-input
-                v-model="form.user"
-                placeholder="输入你的账号"
-                autocomplete="email"
-              />
+              <el-input v-model="form.user" placeholder="输入你的账号" autocomplete="email" />
             </el-form-item>
 
             <el-form-item label="密码" prop="password">
-              <el-input
-                v-model="form.password"
-                placeholder="请输入密码"
-                show-password
-                autocomplete="current-password"
-              />
+              <el-input v-model="form.password" placeholder="请输入密码" show-password autocomplete="current-password" />
             </el-form-item>
 
             <div class="form-actions">
@@ -133,6 +84,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { API_BASE_URL } from '@/config/api'
+import { connectChatSocket } from '@/utils/chatSocket'
 
 const router = useRouter()
 
@@ -162,21 +114,17 @@ async function onLogin() {
   }
   loading.value = true
   try {
-    // 1. 调用后端登录接口
     const response = await axios.post(`${API_BASE_URL}/admin/login`, {
-      // 后端要求的字段名是 username / password / role
       username: form.user,
       password: form.password,
       role: form.role,
     })
 
-    // 2. 判断后端返回是否成功（Result.code === 1 表示成功）
     if (response.data?.code !== 1) {
       ElMessage.error(response.data?.msg || '登录失败')
       return
     }
 
-    // 3. 取出 token 和用户信息并存到本地（路由守卫与 toolbar 会用到）
     const loginData = response.data?.data || {}
     const token = loginData?.token
     if (!token) {
@@ -206,12 +154,17 @@ async function onLogin() {
     localStorage.removeItem('photo')
     localStorage.removeItem('picture')
 
+    try {
+      await connectChatSocket(token, Number(loginData?.id || 0))
+    } catch {
+      ElMessage.warning('登录成功，但消息连接尚未建立，稍后会自动重试')
+    }
+
     ElMessage.success('登录成功')
 
-    // 4. 根据身份跳转到对应首页
     const roleHomeMap: Record<string, string> = {
       学生: '/student/projects/news',
-      老师: '/',
+      老师: '/teacher',
       管理员: '/',
     }
     router.push(roleHomeMap[form.role] || '/')
@@ -312,189 +265,6 @@ async function onLogin() {
   color: #8a95b2;
 }
 
-.illustration {
-  position: relative;
-  flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 20px 0;
-}
-
-.headline-block {
-  max-width: 460px;
-}
-
-.headline-title {
-  font-size: 32px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  margin: 0 0 14px;
-  color: #1f2f56;
-}
-
-.headline-desc {
-  margin: 0 0 20px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #7b88a6;
-}
-
-.stats-row {
-  display: flex;
-  gap: 14px;
-}
-
-.stat-card {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 14px;
-  padding: 12px 14px;
-  box-shadow:
-    0 8px 22px rgba(31, 56, 104, 0.12),
-    0 0 0 1px rgba(210, 220, 255, 0.8);
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2f56;
-}
-
-.stat-label {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #8a95b2;
-}
-
-.login-side-visual {
-  position: relative;
-  flex: 1;
-  margin-top: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hero-illustration {
-  position: relative;
-  width: 420px;
-  max-width: 100%;
-  height: 260px;
-}
-
-.hero-bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(120, 150, 255, 0.18);
-}
-
-.hero-bg-circle-lg {
-  width: 260px;
-  height: 260px;
-  right: -40px;
-  top: -40px;
-}
-
-.hero-bg-circle-sm {
-  width: 80px;
-  height: 80px;
-  left: -20px;
-  bottom: 10px;
-  background: rgba(153, 185, 255, 0.18);
-}
-
-.hero-device {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 260px;
-}
-
-.hero-device-screen {
-  position: relative;
-  width: 100%;
-  height: 150px;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow:
-    0 14px 32px rgba(31, 56, 104, 0.18),
-    0 0 0 1px rgba(216, 224, 255, 0.9);
-  overflow: hidden;
-}
-
-.hero-folder {
-  position: absolute;
-  border-radius: 14px;
-}
-
-.hero-folder-main {
-  width: 110px;
-  height: 70px;
-  left: 40px;
-  top: 54px;
-  background: linear-gradient(135deg, #4b7fff, #6ea5ff);
-}
-
-.hero-folder-back {
-  width: 78px;
-  height: 54px;
-  right: 32px;
-  top: 62px;
-  background: rgba(102, 153, 255, 0.16);
-}
-
-.hero-check {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  right: 50px;
-  top: 76px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 4px 10px rgba(32, 73, 166, 0.25);
-}
-
-.hero-check::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: inherit;
-  border-bottom: 2px solid #4b7fff;
-  border-right: 2px solid #4b7fff;
-  transform: rotate(40deg);
-}
-
-.hero-device-base {
-  margin: 10px auto 0;
-  width: 210px;
-  height: 22px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(144, 172, 255, 0.3), rgba(199, 213, 255, 0.12));
-  opacity: 0.9;
-}
-
-.hero-paper {
-  position: absolute;
-  width: 54px;
-  height: 38px;
-  border-radius: 10px;
-  background: rgba(129, 164, 255, 0.25);
-  border: 1px solid rgba(160, 191, 255, 0.35);
-}
-
-.hero-paper-left {
-  left: 40px;
-  top: 40px;
-  transform: rotate(-12deg);
-}
-
-.hero-paper-top {
-  left: 150px;
-  top: 10px;
-  transform: rotate(8deg);
-}
-
 .login-side-description {
   margin-top: 32px;
 }
@@ -509,39 +279,6 @@ async function onLogin() {
   margin: 0;
   font-size: 13px;
   color: #8791aa;
-}
-
-.footer-links {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: rgba(216, 229, 255, 0.76);
-  margin-top: 24px;
-}
-
-.footer-year {
-  opacity: 0.9;
-}
-
-.footer-links-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.footer-dot {
-  opacity: 0.6;
-}
-
-.footer-link {
-  color: inherit;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.footer-link:hover {
-  color: rgba(255, 255, 255, 0.95);
 }
 
 .form-side {

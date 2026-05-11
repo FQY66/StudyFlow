@@ -85,7 +85,11 @@ const fetchNews = async () => {
 }
 
 const goDetail = (item: NewsItem) => {
-  const base = route.path.startsWith('/student') ? '/student' : ''
+  const base = route.path.startsWith('/student')
+    ? '/student'
+    : route.path.startsWith('/teacher')
+      ? '/teacher'
+      : ''
   router.push(`${base}/projects/news/detail/study/${item.id}`)
 }
 

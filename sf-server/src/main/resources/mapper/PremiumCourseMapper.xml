@@ -52,4 +52,10 @@
     <delete id="delete">
         delete from premium_course where id = #{id}
     </delete>
+
+    <update id="increaseClickCount">
+        update premium_course
+        set click_count = ifnull(click_count, 0) + 1
+        where id = #{id}
+    </update>
 </mapper>

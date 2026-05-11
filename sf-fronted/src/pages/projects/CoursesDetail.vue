@@ -39,6 +39,17 @@ const formatUrl = (path: string) => {
   return `${import.meta.env.VITE_API_BASE_URL || ''}/${path.replace(/^\/+/, '')}`
 }
 
+const increaseClick = async () => {
+  if (!id.value) return
+  try {
+    await request.put('/premiumCourse/increaseClick', null, {
+      params: { id: id.value }
+    })
+  } catch {
+    // ignore click count failure
+  }
+}
+
 const fetchDetail = async () => {
   loading.value = true
   try {
@@ -53,7 +64,8 @@ const fetchDetail = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await increaseClick()
   void fetchDetail()
 })
 </script>

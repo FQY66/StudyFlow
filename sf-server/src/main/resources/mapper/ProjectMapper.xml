@@ -32,7 +32,7 @@
             </if>
         </where>
         group by ps.id
-        order by pendingSignupCount desc, ps.status desc, ps.update_time desc
+        order by ps.click_count desc, ps.like_count desc, pendingSignupCount desc, ps.status desc
     </select>
 
     <select id="getById" resultType="com.sf.vo.ProjectStudyVO">
@@ -58,6 +58,30 @@
                ps.create_time
         from project_signup as ps join user as u on ps.user_id = u.id where ps.project_id=#{projectId}
         order by ps.status desc;
+    </select>
+
+    <select id="getSignedUpProjectsByUserId" resultType="com.sf.vo.ProjectStudyVO">
+        select ps.*, s.status as signupStatus, s.create_time as signupTime
+        from project_signup s
+        join project_study ps on s.project_id = ps.id
+        where s.user_id = #{userId}
+        order by s.create_time desc
+    </select>
+
+    <select id="countAllProjects" resultType="java.lang.Integer">
+        select count(*)
+        from project_study
+    </select>
+
+    <select id="countTotalClick" resultType="java.lang.Integer">
+        select ifnull(sum(click_count), 0)
+        from project_study
+    </select>
+
+    <select id="countTotalParticipants" resultType="java.lang.Integer">
+        select count(distinct user_id)
+        from project_signup
+        where status = '已通过'
     </select>
 
     <insert id="insert" parameterType="com.sf.entity.ProjectStudy">
@@ -99,6 +123,18 @@
             <if test="likeCount != null">like_count = #{likeCount},</if>
             <if test="clickCount != null">click_count = #{clickCount},</if>
         </set>
+        where id = #{id}
+    </update>
+
+    <update id="increaseClickCount">
+        update project_study
+        set click_count = ifnull(click_count, 0) + 1
+        where id = #{id}
+    </update>
+
+    <update id="increaseLikeCount">
+        update project_study
+        set like_count = ifnull(like_count, 0) + 1
         where id = #{id}
     </update>
 </mapper>

@@ -1,7 +1,8 @@
-import { createWebHashHistory, createRouter } from 'vue-router'
+import { createWebHashHistory, createRouter, type RouteLocationGeneric } from 'vue-router'
 import axios from 'axios'
 import { API_BASE_URL } from '@/config/api'
 import AdminLayout from '@/layouts/Admin.vue'
+import TeacherLayout from '@/layouts/Teacher.vue'
 import StudentLayout from '@/layouts/Student.vue'
 import Index from '@/pages/index.vue'
 import NotFound from '@/pages/common/NotFound.vue'
@@ -29,6 +30,60 @@ import NewProject from '@/pages/projects/NewProject.vue'
 import ProjectDetail from '@/pages/projects/ProjectDetail.vue'
 import UploadTest from '@/pages/common/UploadTest.vue'
 import Ai from '@/pages/ai/Ai.vue'
+import ProfileCenter from '@/pages/common/ProfileCenter.vue'
+
+const adminChildren = [
+  { path: '', component: Index },
+  { path: 'square', component: Square },
+  { path: 'square/forum', component: Square },
+  { path: 'square/chat', component: ChatWindow },
+  { path: 'system/users', component: Users },
+  { path: 'system/users/detail', component: UserDetail },
+  { path: 'system/project', component: SystemProject },
+  { path: 'system/project/edit/:id', component: SystemProjectEdit },
+  { path: 'system/news', component: SystemNews },
+  { path: 'system/courses', component: SystemCourses },
+  { path: 'projects/management', component: Management },
+  { path: 'projects/new', component: NewProject },
+  { path: 'projects/detail/:id', component: ProjectDetail },
+  { path: 'projects/news', component: News },
+  { path: 'projects/news/create', component: NewsCreate },
+  { path: 'projects/news/edit/:id', component: NewsEdit },
+  { path: 'projects/news/detail/:type/:id', component: NewsDetail },
+  { path: 'projects/courses', component: Courses },
+  { path: 'projects/courses/create', component: SystemCourseCreate },
+  { path: 'projects/courses/edit/:id', component: SystemCourseEdit },
+  { path: 'projects/courses/detail/:id', component: CoursesDetail },
+  { path: 'projects/courses/:id', redirect: (to: RouteLocationGeneric) => `/projects/courses/detail/${to.params.id as string | number}` },
+  { path: 'projects/courses/article/:id', component: ArticleDetail },
+  { path: 'common/upload-test', component: UploadTest }
+]
+
+const teacherChildren = [
+  { path: '', component: Index },
+  { path: 'square', component: Square },
+  { path: 'square/forum', component: Square },
+  { path: 'square/chat', component: ChatWindow },
+  { path: 'projects/management', component: Management },
+  { path: 'projects/new', component: NewProject },
+  { path: 'projects/detail/:id', component: ProjectDetail },
+  { path: 'projects/news', component: News },
+  { path: 'projects/news/create', component: NewsCreate },
+  { path: 'projects/news/edit/:id', component: NewsEdit },
+  { path: 'projects/news/detail/:type/:id', component: NewsDetail },
+  { path: 'projects/courses', component: Courses },
+  { path: 'projects/courses/create', component: SystemCourseCreate },
+  { path: 'projects/courses/edit/:id', component: SystemCourseEdit },
+  { path: 'projects/courses/detail/:id', component: CoursesDetail },
+  { path: 'projects/courses/:id', redirect: (to: RouteLocationGeneric) => `/teacher/projects/courses/detail/${to.params.id as string | number}` },
+  { path: 'projects/courses/article/:id', component: ArticleDetail },
+  { path: 'common/upload-test', component: UploadTest },
+  { path: 'sf/ai', component: Ai },
+  { path: 'system/users', redirect: '/teacher' },
+  { path: 'system/project', redirect: '/teacher' },
+  { path: 'system/news', redirect: '/teacher' },
+  { path: 'system/courses', redirect: '/teacher' },
+]
 
 const routes = [
   { path: '/login', component: Login },
@@ -36,39 +91,27 @@ const routes = [
   {
     path: '/sf/ai',
     component: AdminLayout,
-    children: [
-      { path: '', component: Ai }
-    ]
+    children: [{ path: '', component: Ai }]
   },
   {
     path: '/',
     component: AdminLayout,
-    children: [
-      { path: '', component: Index },
-      { path: 'square', component: Square },
-      { path: 'square/forum', component: Square },
-      { path: 'square/chat', component: ChatWindow },
-      { path: 'system/users', component: Users },
-      { path: 'system/users/detail', component: UserDetail },
-      { path: 'system/project', component: SystemProject },
-      { path: 'system/project/edit/:id', component: SystemProjectEdit },
-      { path: 'system/news', component: SystemNews },
-      { path: 'system/courses', component: SystemCourses },
-      { path: 'projects/management', component: Management },
-      { path: 'projects/new', component: NewProject },
-      { path: 'projects/detail/:id', component: ProjectDetail },
-      { path: 'projects/news', component: News },
-      { path: 'projects/news/create', component: NewsCreate },
-      { path: 'projects/news/edit/:id', component: NewsEdit },
-      { path: 'projects/news/detail/:type/:id', component: NewsDetail },
-      { path: 'projects/courses', component: Courses },
-      { path: 'projects/courses/create', component: SystemCourseCreate },
-      { path: 'projects/courses/edit/:id', component: SystemCourseEdit },
-      { path: 'projects/courses/detail/:id', component: CoursesDetail },
-      { path: 'projects/courses/:id', redirect: (to) => `/projects/courses/detail/${to.params.id}` },
-      { path: 'projects/courses/article/:id', component: ArticleDetail },
-      { path: 'common/upload-test', component: UploadTest }
-    ]
+    children: adminChildren
+  },
+  {
+    path: '/teacher',
+    component: TeacherLayout,
+    children: teacherChildren
+  },
+  {
+    path: '/teacher/profile',
+    component: TeacherLayout,
+    children: [{ path: '', component: ProfileCenter }]
+  },
+  {
+    path: '/system/profile',
+    component: AdminLayout,
+    children: [{ path: '', component: ProfileCenter }]
   },
   {
     path: '/student',
@@ -83,7 +126,7 @@ const routes = [
       { path: 'projects/news/detail/:type/:id', component: NewsDetail },
       { path: 'projects/courses', component: Courses },
       { path: 'projects/courses/detail/:id', component: CoursesDetail },
-      { path: 'projects/courses/:id', redirect: (to) => `/student/projects/courses/detail/${to.params.id}` },
+      { path: 'projects/courses/:id', redirect: (to: RouteLocationGeneric) => `/student/projects/courses/detail/${to.params.id as string | number}` },
       { path: 'projects/courses/article/:id', component: ArticleDetail },
       { path: 'projects/detail/:id', component: ProjectDetail },
       { path: 'sf/ai', component: Ai },
@@ -92,9 +135,7 @@ const routes = [
   {
     path: '/student/projects/detail/:id',
     component: StudentLayout,
-    children: [
-      { path: '', component: ProjectDetail }
-    ]
+    children: [{ path: '', component: ProjectDetail }]
   },
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
 ]
@@ -114,6 +155,14 @@ const adminOnlyPaths = [
   '/system/courses',
 ]
 
+const teacherOnlyRedirects = [
+  '/system',
+  '/system/users',
+  '/system/project',
+  '/system/news',
+  '/system/courses',
+]
+
 const studentAllowedPaths = [
   '/student',
   '/student/projects/management',
@@ -127,6 +176,7 @@ const studentAllowedPaths = [
   '/student/projects/courses/article/',
   '/student/projects/detail/',
   '/student/sf/ai',
+  '/teacher/system',
 ]
 
 function isPathMatched(path: string, rules: string[]) {
@@ -161,8 +211,16 @@ router.beforeEach(async (to) => {
 
   const role = sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || '学生'
 
+  if (role === '老师' && teacherOnlyRedirects.some((path) => to.path === path || to.path.startsWith(path))) {
+    return '/teacher'
+  }
+
+  if (role === '老师' && to.path === '/sf/ai') {
+    return '/teacher/sf/ai'
+  }
+
   if (!isAllowedPathByRole(to.path, role)) {
-    return role === '学生' ? '/student/projects/news' : '/'
+    return role === '学生' ? '/student/projects/news' : role === '老师' ? '/teacher' : '/'
   }
 
   if (role === '学生' && isAdminOnlyPath(to.path)) {

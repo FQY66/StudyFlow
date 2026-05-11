@@ -43,7 +43,38 @@
             u.name as name,
             u.username as username,
             u.email as email,
-            u.avatar as avatar
+            u.avatar as avatar,
+            (
+                select pm.content
+                from private_message pm
+                where (pm.sender_id = #{userId} and pm.receiver_id = u.id)
+                   or (pm.sender_id = u.id and pm.receiver_id = #{userId})
+                order by pm.create_time desc, pm.id desc
+                limit 1
+            ) as lastMessage,
+            (
+                select date_format(pm.create_time, '%Y-%m-%d %H:%i')
+                from private_message pm
+                where (pm.sender_id = #{userId} and pm.receiver_id = u.id)
+                   or (pm.sender_id = u.id and pm.receiver_id = #{userId})
+                order by pm.create_time desc, pm.id desc
+                limit 1
+            ) as lastMessageTime,
+            (
+                select count(1)
+                from private_message pm
+                where pm.sender_id = u.id
+                  and pm.receiver_id = #{userId}
+                  and pm.is_read = 0
+            ) as unreadCount,
+            (
+                select pm.is_read
+                from private_message pm
+                where (pm.sender_id = #{userId} and pm.receiver_id = u.id)
+                   or (pm.sender_id = u.id and pm.receiver_id = #{userId})
+                order by pm.create_time desc, pm.id desc
+                limit 1
+            ) as lastMessageIsRead
         from friend_relation fr
         join user u
             on (

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { View, Star, User, TrendCharts } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import type { ECharts, EChartsOption } from 'echarts'
+import request from '@/utils/request'
 
 interface StatCard {
   label: string
@@ -27,12 +29,31 @@ interface HotProject {
   category: string
 }
 
+interface ProjectLikeItem {
+  id: number
+  title: string
+  likes: number
+}
+
 const statCards = ref<StatCard[]>([
-  { label: '总项目数', value: 52, trend: '+20%', trendType: 'up' },
-  { label: '在线访客数', value: 182, trend: '-10%', trendType: 'down' },
-  { label: '点击量', value: 9520, trend: '-12%', trendType: 'down' },
-  { label: '参与人数', value: 156, trend: '+30%', trendType: 'up' }
+  { label: '总项目数', value: 0, trend: '+20%', trendType: 'up' },
+  { label: '在线访客数', value: 0, trend: '-10%', trendType: 'down' },
+  { label: '点击量', value: 0, trend: '-12%', trendType: 'down' },
+  { label: '参与人数', value: 0, trend: '+30%', trendType: 'up' }
 ])
+
+interface StatApiResult {
+  totalProjects: number
+  onlineVisitors: number
+  totalClicks: number
+  participants: number
+}
+
+interface ApiResult<T> {
+  code: number
+  msg?: string
+  data: T
+}
 
 const users = ref<UserData[]>([
   { id: 1, name: '张飞', isonline: 0, gender: '女', progress: 60 },
@@ -45,13 +66,8 @@ const sortedUsers = computed(() => {
   return users.value.slice().sort((a, b) => b.isonline - a.isonline)
 })
 
-const hotProjects = ref<HotProject[]>([
-  { id: 1, title: '大数据技术在高校教学中的应用', views: 2150, likes: 650, category: '大数据' },
-  { id: 2, title: '人工智能伦理与研究方法论', views: 1980, likes: 520, category: 'AI' },
-  { id: 3, title: '云计算平台构建与实践', views: 2340, likes: 720, category: '云计算' },
-  { id: 4, title: '高校智能管理系统开发', views: 1680, likes: 410, category: '系统开发' },
-  { id: 5, title: '教育数据挖掘与分析', views: 1520, likes: 385, category: '数据分析' }
-])
+const router = useRouter()
+const hotProjects = ref<HotProject[]>([])
 
 interface TodoItem {
   id: number
@@ -75,67 +91,106 @@ const chartData = {
 
 const userOverviewChartRef = ref<HTMLElement | null>(null)
 const visitsChartRef = ref<HTMLElement | null>(null)
+const projectLikeChartRef = ref<HTMLElement | null>(null)
 
 let userOverviewChart: ECharts | null = null
 let visitsChart: ECharts | null = null
+let projectLikeChart: ECharts | null = null
 
-const initUserOverviewChart = () => {
+const initUserOverviewChart = async () => {
   if (!userOverviewChartRef.value) return
   if (userOverviewChart) {
     userOverviewChart.dispose()
   }
   userOverviewChart = echarts.init(userOverviewChartRef.value)
 
-  const option: EChartsOption = {
-    animationDuration: 800,
-    animationEasing: 'cubicOut',
-    tooltip: {
-      trigger: 'axis'
-    },
-    legend: {
-      data: ['新用户', '活跃用户', '回访用户'],
-      top: 0
-    },
-    grid: {
-      top: 40,
-      left: '3%',
-      right: '4%',
-      bottom: 40,
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: chartData.months
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '新用户',
-        type: 'bar',
-        barMaxWidth: 24,
-        emphasis: { focus: 'series' },
-        data: [40, 32, 51, 34, 60, 42, 55, 48, 62]
-      },
-      {
-        name: '活跃用户',
-        type: 'bar',
-        barMaxWidth: 24,
-        emphasis: { focus: 'series' },
-        data: [60, 45, 50, 30, 72, 48, 70, 52, 68]
-      },
-      {
-        name: '回访用户',
-        type: 'bar',
-        barMaxWidth: 24,
-        emphasis: { focus: 'series' },
-        data: [20, 13, 39, 6, 38, 0, 35, 20, 20]
-      }
-    ]
-  }
+  try {
+    const response = await request.get('/project/page', {
+      params: { page: 1, pageSize: 1000 }
+    })
+    const records = response.data?.data?.records || response.data?.data || []
+    const projects = (records as any[])
+      .map((item) => ({
+        id: Number(item.id),
+        title: item.theme || item.title || '未命名项目',
+        likes: Number(item.likeCount ?? item.likes ?? 0)
+      }))
+      .sort((a, b) => b.likes - a.likes)
+      .slice(0, 8)
 
-  userOverviewChart.setOption(option)
+    const option: EChartsOption = {
+      animationDuration: 800,
+      animationEasing: 'cubicOut',
+      title: {
+        text: '受欢迎的项目排行'
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      grid: {
+        top: 50,
+        left: 80,
+        right: 30,
+        bottom: 30,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value',
+        boundaryGap: [0, 0.01]
+      },
+      yAxis: {
+        type: 'category',
+        data: projects.map((item) => item.title)
+      },
+      series: [
+        {
+          name: '点赞数',
+          type: 'bar',
+          data: projects.map((item) => item.likes),
+          barMaxWidth: 24,
+          label: {
+            show: true,
+            position: 'right'
+          }
+        }
+      ]
+    }
+
+    userOverviewChart.setOption(option)
+  } catch {
+    userOverviewChart.setOption({
+      title: { text: 'World Population' },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' }
+      },
+      grid: {
+        top: 50,
+        left: 80,
+        right: 30,
+        bottom: 30,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value',
+        boundaryGap: [0, 0.01]
+      },
+      yAxis: {
+        type: 'category',
+        data: []
+      },
+      series: [
+        {
+          name: '点赞数',
+          type: 'bar',
+          data: []
+        }
+      ]
+    })
+  }
 }
 
 const initVisitsChart = () => {
@@ -179,12 +234,66 @@ const initVisitsChart = () => {
   visitsChart.setOption(option)
 }
 
+const fetchStats = async () => {
+  try {
+    const response = await request.get<ApiResult<StatApiResult> | StatApiResult>('/project/stats')
+    const payload = response.data as ApiResult<StatApiResult> | StatApiResult
+    const stats = 'data' in payload ? payload.data : payload
+
+    statCards.value = [
+      { label: '总项目数', value: stats.totalProjects ?? 0, trend: '+20%', trendType: 'up' },
+      { label: '在线访客数', value: stats.onlineVisitors ?? 0, trend: '-10%', trendType: 'down' },
+      { label: '点击量', value: stats.totalClicks ?? 0, trend: '-12%', trendType: 'down' },
+      { label: '参与人数', value: stats.participants ?? 0, trend: '+30%', trendType: 'up' }
+    ]
+  } catch {
+    // 保持默认值
+  }
+}
+
+const fetchHotProjects = async () => {
+  try {
+    const response = await request.get('/project/page', {
+      params: {
+        page: 1,
+        pageSize: 5
+      }
+    })
+    const records = response.data?.data?.records || response.data?.data || []
+    hotProjects.value = (records as HotProject[]).slice(0, 5).map((item: any) => ({
+      id: Number(item.id),
+      title: item.theme || item.title || '未命名项目',
+      views: Number(item.clickCount ?? item.views ?? 0),
+      likes: Number(item.likeCount ?? item.likes ?? 0),
+      category: item.category || '未分类'
+    }))
+  } catch {
+    hotProjects.value = []
+  }
+}
+
+const goToProjectDetail = (projectId: number) => {
+  if (!projectId) return
+  const role = sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || ''
+  if (role === '学生') {
+    router.push(`/student/projects/detail/${projectId}`)
+    return
+  }
+  if (role === '老师') {
+    router.push(`/teacher/projects/detail/${projectId}`)
+    return
+  }
+  router.push(`/projects/detail/${projectId}`)
+}
+
 const handleResize = () => {
   userOverviewChart?.resize()
   visitsChart?.resize()
 }
 
 onMounted(() => {
+  fetchStats()
+  fetchHotProjects()
   initUserOverviewChart()
   initVisitsChart()
   window.addEventListener('resize', handleResize)
@@ -221,28 +330,10 @@ onBeforeUnmount(() => {
     <div class="charts-container">
       <div class="chart-card">
         <div class="chart-header">
-          <h3>用户概述</h3>
-          <span class="chart-subtitle">比上周 +23%</span>
+          <h3>项目点赞排行</h3>
+          <span class="chart-subtitle">点击量 / 点赞量展示</span>
         </div>
         <div class="chart-content">
-          <div class="chart-stats">
-            <div class="stat-item">
-              <span class="stat-name">总用户量</span>
-              <span class="stat-number">32k</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-name">总访问量</span>
-              <span class="stat-number">128k</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-name">日活跃量</span>
-              <span class="stat-number">1.2k</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-name">周增比</span>
-              <span class="stat-number">+5%</span>
-            </div>
-          </div>
           <div ref="userOverviewChartRef" class="chart-echarts"></div>
         </div>
       </div>
@@ -268,6 +359,11 @@ onBeforeUnmount(() => {
             v-for="(project, index) in hotProjects"
             :key="project.id"
             class="project-item"
+            role="button"
+            tabindex="0"
+            @click="goToProjectDetail(project.id)"
+            @keydown.enter.prevent="goToProjectDetail(project.id)"
+            @keydown.space.prevent="goToProjectDetail(project.id)"
           >
             <div class="project-rank">{{ index + 1 }}</div>
             <div class="project-info">
