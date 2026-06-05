@@ -24,9 +24,40 @@ class ChatReq(BaseModel):
     top_k: int = Field(default=5, ge=1, le=10)
 
 
+class IngestReq(BaseModel):
+    title: str = Field(..., min_length=1, description="文档标题")
+    content: str = Field(..., min_length=1, description="文档正文")
+    source: str = Field(default="研学资讯", description="来源标签")
+    url: str = Field(default="", description="详情链接")
+    publish_time: str = Field(default="", description="发布时间")
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.post("/rag/ingest")
+def rag_ingest(req: IngestReq):
+    result = service.ingest_document(
+        title=req.title,
+        content=req.content,
+        source=req.source,
+        url=req.url,
+        publish_time=req.publish_time,
+    )
+    return JSONResponse(content=result, media_type="application/json; charset=utf-8")
+
+
+class DeleteReq(BaseModel):
+    title: str = Field(..., min_length=1, description="文档标题")
+    source: str = Field(..., min_length=1, description="来源标签")
+
+
+@app.post("/rag/delete")
+def rag_delete(req: DeleteReq):
+    result = service.delete_document(title=req.title, source=req.source)
+    return JSONResponse(content=result, media_type="application/json; charset=utf-8")
 
 
 @app.post("/rag/chat")

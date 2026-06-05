@@ -9,12 +9,15 @@ import com.sf.mapper.ProjectMapper;
 import com.sf.mapper.UserMapper;
 import com.sf.result.PageResult;
 import com.sf.service.ProjectService;
+import com.sf.service.RagIngestService;
+import com.sf.vo.ProjectSignupUserVO;
 import com.sf.vo.ProjectStudyVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -23,6 +26,9 @@ public class ProjectServiceImpl implements ProjectService {
     private ProjectMapper projectMapper;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private RagIngestService ragIngestService;
+
     @Override
     public PageResult pageQuery(ProjectPageQueryDTO projectPageQueryDTO) {
         log.info("分页查询项目Service层: {}", projectPageQueryDTO);
@@ -32,7 +38,18 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("page的pageSize: {}", page.getPageSize());
         log.info("page的records: {}", page.getResult().size());
         List<ProjectStudyVO> records = page.getResult();
-        // 填充报名用户列表
+        records.forEach(record -> {
+            record.setProjectSignupList(projectMapper.getSignupByProjectId(record.getId()));
+        });
+        return new PageResult(page.getTotal(), records);
+    }
+
+    @Override
+    public PageResult pageQueryManage(ProjectPageQueryDTO projectPageQueryDTO) {
+        log.info("管理端分页查询项目Service层: {}", projectPageQueryDTO);
+        PageHelper.startPage(projectPageQueryDTO.getPage(), projectPageQueryDTO.getPageSize());
+        Page<ProjectStudyVO> page = projectMapper.pageQueryManage(projectPageQueryDTO);
+        List<ProjectStudyVO> records = page.getResult();
         records.forEach(record -> {
             record.setProjectSignupList(projectMapper.getSignupByProjectId(record.getId()));
         });
@@ -57,7 +74,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void insert(ProjectStudy projectStudy) {
         log.info("新增项目Service层: {}", projectStudy);
-        //设置项目状态为待审核
+        // 设置项目状态为待审核
         projectStudy.setStatus("待审核");
         projectStudy.setLikeCount(0);
         projectStudy.setClickCount(0);
@@ -77,12 +94,48 @@ public class ProjectServiceImpl implements ProjectService {
         projectStudy.setId(id);
         projectStudy.setStatus("已发布");
         projectMapper.update(projectStudy);
+
+        // 审核通过后，异步摄入RAG知识库
+        CompletableFuture.runAsync(() -> {
+            try {
+                ProjectStudyVO vo = projectMapper.getById(id);
+                if (vo != null) {
+                    ragIngestService.ingestProject(
+                        vo.getTheme(),
+                        vo.getIntroduction(),
+                        vo.getContent(),
+                        vo.getCategory(),
+                        vo.getId()
+                    );
+                }
+            } catch (Exception e) {
+                log.error("[RAG] 项目摄入失败: id={}, error={}", id, e.getMessage());
+            }
+        });
     }
 
     @Override
     public void delete(Integer id) {
         log.info("删除项目Service层: {}", id);
+        // 先获取项目信息用于 RAG 删除
+        ProjectStudyVO vo = null;
+        try {
+            vo = projectMapper.getById(id);
+        } catch (Exception e) {
+            log.warn("[RAG] 删除前查询项目失败: id={}", id);
+        }
         projectMapper.delete(id);
+        // 异步清理 RAG 知识库
+        final ProjectStudyVO finalVo = vo;
+        if (finalVo != null) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    ragIngestService.deleteProject(finalVo.getTheme(), finalVo.getCategory());
+                } catch (Exception e) {
+                    log.error("[RAG] 项目删除失败: id={}, error={}", id, e.getMessage());
+                }
+            });
+        }
     }
 
     @Override
@@ -91,6 +144,13 @@ public class ProjectServiceImpl implements ProjectService {
         ProjectStudyVO project = projectMapper.getById(projectId);
         if (project == null) {
             throw new IllegalArgumentException("项目不存在");
+        }
+        // 检查是否已报名（防止重复报名）
+        List<ProjectSignupUserVO> existingSignups = projectMapper.getSignupByProjectId(projectId);
+        boolean alreadySignedUp = existingSignups != null && existingSignups.stream()
+                .anyMatch(s -> s.getUserId().equals(userId));
+        if (alreadySignedUp) {
+            throw new IllegalArgumentException("你已经报名过该项目了");
         }
         ProjectSignup projectSignup = new ProjectSignup();
         projectSignup.setProjectId(Long.valueOf(projectId));

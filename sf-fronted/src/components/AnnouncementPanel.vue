@@ -43,7 +43,11 @@ const loading = ref(false)
 const announcements = ref<AnnouncementItem[]>([])
 const total = ref(0)
 
-const prefix = computed(() => (route.path.startsWith('/student') ? '/student' : ''))
+const prefix = computed(() => {
+  if (route.path.startsWith('/student')) return '/student'
+  if (route.path.startsWith('/teacher')) return '/teacher'
+  return ''
+})
 
 const fetchAnnouncements = async () => {
   loading.value = true

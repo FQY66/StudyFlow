@@ -340,7 +340,7 @@ async function handleSubmitComment() {
   }
 
   try {
-    const username = localStorage.getItem('username') || '匿名用户'
+    const username = sessionStorage.getItem('username') || '匿名用户'
     const { data } = await request.put<ApiResult<null>>('/forum/addComment', {
       postId: currentPost.value.id,
       authorName: username,

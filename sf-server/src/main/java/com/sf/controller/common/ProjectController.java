@@ -28,6 +28,14 @@ public class ProjectController {
         return Result.success(pageResult);
     }
 
+    /** 管理端分页查询：待审核项目+待审核报名用户排前面 */
+    @GetMapping("/page/manage")
+    public Result<PageResult> pageManage(ProjectPageQueryDTO projectPageQueryDTO) {
+        log.info("管理端分页查询项目Controller层: {}", projectPageQueryDTO);
+        PageResult pageResult = projectService.pageQueryManage(projectPageQueryDTO);
+        return Result.success(pageResult);
+    }
+
     @GetMapping("/detail")
     public Result<ProjectStudyVO> getById(@RequestParam Integer id) {
         log.info("根据id查询项目Controller层: {}", id);
@@ -81,6 +89,7 @@ public class ProjectController {
         projectService.signup(projectId, userId);
         return Result.success();
     }
+
     @PostMapping("/approveSignup")
     public Result approveSignup(@RequestParam Integer projectId, @RequestParam Integer userId) {
         log.info("审核通过报名Controller层: projectId={}, userId={}", projectId, userId);

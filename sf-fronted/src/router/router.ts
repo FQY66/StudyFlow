@@ -118,6 +118,7 @@ const routes = [
     component: StudentLayout,
     children: [
       { path: '', redirect: '/student/projects/news' },
+      { path: 'profile', component: ProfileCenter },
       { path: 'projects/management', component: Management },
       { path: 'projects/new', component: NewProject },
       { path: 'square/forum', component: Square },
@@ -165,6 +166,7 @@ const teacherOnlyRedirects = [
 
 const studentAllowedPaths = [
   '/student',
+  '/student/profile',
   '/student/projects/management',
   '/student/projects/new',
   '/student/square/forum',

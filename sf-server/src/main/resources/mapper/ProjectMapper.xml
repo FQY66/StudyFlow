@@ -32,7 +32,34 @@
             </if>
         </where>
         group by ps.id
-        order by ps.click_count desc, ps.like_count desc, pendingSignupCount desc, ps.status desc
+        order by ps.click_count desc, ps.like_count desc, ps.create_time desc
+    </select>
+
+    <!-- 管理端分页查询：待审核项目 + 待审核报名用户优先 -->
+    <select id="pageQueryManage" resultType="com.sf.vo.ProjectStudyVO">
+        select ps.*, count(case when sg.status != '已通过' then 1 end) as pendingSignupCount
+        from project_study ps
+        left join project_signup sg on ps.id = sg.project_id
+        <where>
+            <if test="theme != null and theme != ''">
+                and ps.theme like concat('%',#{theme},'%')
+            </if>
+            <if test="category != null and category != ''">
+                and ps.category = #{category}
+            </if>
+            <if test="pendingFilter != null and pendingFilter == 'statusPending'">
+                and ps.status = '待审核'
+            </if>
+            <if test="pendingFilter != null and pendingFilter == 'hasPendingUsers'">
+                and exists (
+                    select 1 from project_signup psg
+                    where psg.project_id = ps.id
+                      and psg.status != '已通过'
+                )
+            </if>
+        </where>
+        group by ps.id
+        order by case when ps.status = '待审核' then 0 else 1 end, pendingSignupCount desc, ps.create_time desc
     </select>
 
     <select id="getById" resultType="com.sf.vo.ProjectStudyVO">

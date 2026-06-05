@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { connectChatSocket, getChatSocket, onChatSocketClose, onChatSocketMessage, sendChatSocketMessage } from '@/utils/chatSocket'
@@ -77,6 +78,13 @@ const defaultAvatar = 'https://i.pravatar.cc/80?img=11'
 const messages = ref<Record<number, ChatMessage[]>>({})
 const messageListRef = ref<HTMLElement | null>(null)
 
+const chatRouter = useRouter()
+
+// 加载失败的头像自动回退到默认头像
+const brokenAvatars = reactive(new Set<string>())
+const getSafeSrc = (src: string) => (src && !brokenAvatars.has(src) ? src : defaultAvatar)
+const onAvatarError = (src: string) => { if (src) brokenAvatars.add(src) }
+
 let offMessage: (() => void) | null = null
 let offClose: (() => void) | null = null
 
@@ -89,8 +97,35 @@ const formatAvatar = (avatar?: string, idx = 0) => {
 
 const safeAvatarSrc = (avatar?: string, idx = 0) => formatAvatar(avatar || '', idx)
 
-const openExternalLink = (url: string) => {
+const openShareLink = (url: string) => {
+  if (!url) return
+  // 提取项目ID，根据当前角色构造正确路由
+  if (url.includes('/projects/detail/')) {
+    const projectId = extractProjectId(url)
+    if (projectId) {
+      const role = sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || ''
+      const rolePathMap: Record<string, string> = {
+        '管理员': `/projects/detail/${projectId}`,
+        '老师': `/teacher/projects/detail/${projectId}`,
+        '学生': `/student/projects/detail/${projectId}`
+      }
+      const targetPath = rolePathMap[role] || `/student/projects/detail/${projectId}`
+      chatRouter.push(targetPath)
+      return
+    }
+  }
   window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const extractProjectId = (url: string): string | null => {
+  try {
+    const path = new URL(url).pathname
+    const match = path.match(/\/projects\/detail\/(\d+)/)
+    return match?.[1] || null
+  } catch {
+    const match = url.match(/\/projects\/detail\/(\d+)/)
+    return match?.[1] || null
+  }
 }
 
 const sortContacts = (list: ChatContact[]) => {
@@ -147,6 +182,15 @@ const formatTime = (dateText?: string) => {
 const formatPreviewText = (text?: string) => {
   const value = (text || '').trim()
   if (!value) return '暂无消息'
+  // 检测分享消息 JSON，显示友好预览
+  try {
+    const parsed = JSON.parse(value)
+    if (parsed?.type === 'project_share' && parsed?.title) {
+      return `[分享] ${parsed.title}`
+    }
+  } catch {
+    // 非 JSON，正常截断
+  }
   return value.length > 24 ? `${value.slice(0, 24)}...` : value
 }
 
@@ -459,7 +503,7 @@ onBeforeUnmount(() => {
     <section class="chat-panel">
       <aside class="chat-sidebar">
         <div class="chat-owner">
-          <el-avatar :size="42" :src="activeContact?.avatar || defaultAvatar" />
+          <el-avatar :size="42" :src="getSafeSrc(activeContact?.avatar || defaultAvatar)" @error="onAvatarError(activeContact?.avatar || '')" />
           <div>
             <div class="chat-owner-name">{{ activeContact?.name || '聊天平台' }}</div>
             <div class="chat-owner-mail">{{ activeContact?.email || 'StudyFlow' }}</div>
@@ -477,7 +521,7 @@ onBeforeUnmount(() => {
 
         <div v-else class="chat-contact-list">
           <div v-for="item in filteredContacts" :key="item.id" class="chat-contact-item" :class="{ active: item.id === activeContactId, unread: (item.unreadCount || 0) > 0 }" @click="handleSelectContact(item.id)">
-            <el-avatar :size="34" :src="item.avatar || defaultAvatar" />
+            <el-avatar :size="34" :src="getSafeSrc(item.avatar || defaultAvatar)" @error="onAvatarError(item.avatar)" />
             <div class="chat-contact-main">
               <div class="chat-contact-top">
                 <span class="chat-contact-name">{{ item.name }}</span>
@@ -505,27 +549,39 @@ onBeforeUnmount(() => {
 
         <div ref="messageListRef" class="chat-message-list">
           <div v-for="msg in currentMessages" :key="msg.id" class="chat-msg-row" :class="msg.sender === 'me' ? 'is-me' : 'is-bot'">
-            <el-avatar v-if="msg.sender === 'bot'" :size="28" :src="safeAvatarSrc(activeContact?.avatar, activeContact?.id || 0)" class="chat-msg-avatar" />
+            <el-avatar v-if="msg.sender === 'bot'" :size="28" :src="getSafeSrc(safeAvatarSrc(activeContact?.avatar, activeContact?.id || 0))" class="chat-msg-avatar" @error="onAvatarError(safeAvatarSrc(activeContact?.avatar, activeContact?.id || 0))" />
             <div class="chat-msg-bubble-wrap">
               <div class="chat-msg-meta">{{ msg.sender === 'bot' ? activeContact?.name : '我' }} {{ msg.time }}</div>
-              <div v-if="msg.shareCard" class="share-card" @click="msg.shareCard?.link && openExternalLink(msg.shareCard.link)">
+              <div v-if="msg.shareCard" class="share-card" @click="msg.shareCard?.link && openShareLink(msg.shareCard.link)">
                 <img :src="msg.shareCard.cover || defaultAvatar" class="share-card-cover" alt="" />
                 <div class="share-card-body">
                   <div class="share-card-title">{{ msg.shareCard.title }}</div>
                   <div class="share-card-summary">{{ msg.shareCard.summary }}</div>
-                  <div class="share-card-link">{{ msg.shareCard.link }}</div>
+                  <div class="share-card-hint">点击查看项目详情 →</div>
                 </div>
               </div>
               <div v-else class="chat-msg-bubble">{{ msg.text }}</div>
             </div>
-            <el-avatar v-if="msg.sender === 'me'" :size="28" :src="myAvatar || defaultAvatar" class="chat-msg-avatar" />
+            <el-avatar v-if="msg.sender === 'me'" :size="28" :src="getSafeSrc(myAvatar || defaultAvatar)" @error="onAvatarError(myAvatar)" class="chat-msg-avatar" />
           </div>
         </div>
 
         <footer class="chat-input-wrap">
-          <el-input v-model="chatInput" type="textarea" :rows="3" resize="none" placeholder="输入消息" @keydown.enter.exact.prevent="handleSendChat" />
-          <div class="chat-input-footer">
-            <el-button type="primary" :disabled="!activeContactId" @click="handleSendChat">发送</el-button>
+          <div class="chat-composer">
+            <el-input v-model="chatInput" class="chat-composer-input" type="textarea" :rows="4" resize="none" placeholder="输入消息" @keydown.enter.exact.prevent="handleSendChat" />
+            <div class="chat-composer-footer">
+              <button class="send-btn" :disabled="!activeContactId" @click="handleSendChat">
+                <div class="send-btn-svg-wrapper-1">
+                  <div class="send-btn-svg-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                      <path fill="none" d="M0 0h24v24H0V0z"></path>
+                      <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <span>发送</span>
+              </button>
+            </div>
           </div>
         </footer>
       </section>
@@ -545,7 +601,7 @@ onBeforeUnmount(() => {
         <div v-else class="add-friend-list">
           <div v-for="u in addFriendResult" :key="u.id" class="add-friend-item">
             <div class="add-friend-userinfo">
-              <el-avatar :size="34" :src="formatAvatar(u.avatar, Number(u.id))" />
+              <el-avatar :size="34" :src="getSafeSrc(formatAvatar(u.avatar, Number(u.id)) || defaultAvatar)" @error="onAvatarError(formatAvatar(u.avatar, Number(u.id)))" />
               <div class="add-friend-text">
                 <div class="add-friend-name">{{ u.name || '未命名用户' }}</div>
                 <div class="add-friend-username">@{{ u.username || '-' }}</div>
@@ -563,7 +619,7 @@ onBeforeUnmount(() => {
         <el-empty v-if="pendingRequests.length === 0" description="暂无待处理申请" />
         <div v-else class="pending-request-item" v-for="req in pendingRequests" :key="req.id">
           <div class="pending-request-userinfo">
-            <el-avatar :size="34" :src="formatAvatar(req.requesterAvatar, Number(req.requesterId))" />
+            <el-avatar :size="34" :src="getSafeSrc(formatAvatar(req.requesterAvatar, Number(req.requesterId)) || defaultAvatar)" @error="onAvatarError(formatAvatar(req.requesterAvatar, Number(req.requesterId)))" />
             <div>
               <div class="pending-request-name">{{ req.requesterName || req.requesterUsername || '未知用户' }}</div>
               <div class="pending-request-meta">@{{ req.requesterUsername || '-' }}</div>
@@ -623,14 +679,114 @@ onBeforeUnmount(() => {
 .chat-msg-meta { font-size: 12px; color: #9aa1ae; margin-bottom: 3px; }
 .chat-msg-bubble { background: #f2f3f5; color: #303133; border-radius: 8px; padding: 10px 12px; line-height: 1.5; font-size: 14px; display: inline-block; width: fit-content; max-width: 100%; white-space: pre-wrap; word-break: break-word; }
 .chat-msg-row.is-me .chat-msg-bubble { background: #e9edff; }
-.share-card { display: flex; gap: 10px; width: min(360px, 100%); border: 1px solid #dce5f5; border-radius: 12px; overflow: hidden; background: #fff; cursor: pointer; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08); }
-.share-card-cover { width: 96px; height: 96px; object-fit: cover; flex: none; background: #f3f4f6; }
-.share-card-body { flex: 1; min-width: 0; padding: 10px 12px 10px 0; display: flex; flex-direction: column; gap: 6px; }
-.share-card-title { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.4; }
-.share-card-summary { font-size: 12px; color: #64748b; line-height: 1.5; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.share-card-link { font-size: 11px; color: #1677ff; word-break: break-all; }
-.chat-input-wrap { border-top: 1px solid #ebeef5; padding: 14px; }
-.chat-input-footer { margin-top: 10px; display: flex; justify-content: flex-end; }
+.share-card {
+  display: flex;
+  gap: 0;
+  width: min(340px, 100%);
+  border: 1px solid #e8edf5;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  transition: all 0.2s ease;
+}
+.share-card:hover {
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+  border-color: #cfd8f0;
+}
+.share-card:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.share-card-cover {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  flex: none;
+  border-radius: 10px;
+  background: #f3f5f9;
+  margin: 10px 0 10px 10px;
+}
+.share-card-body {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.share-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e1e2f;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.share-card-summary {
+  font-size: 12px;
+  color: #7b8292;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.share-card-hint {
+  font-size: 11px;
+  color: #8b9cf7;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.chat-input-wrap { border-top: 1px solid #ebeef5; padding: 14px; background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%); }
+.chat-composer { border: 1px solid #d9e2f3; border-radius: 14px; background: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75); overflow: hidden; }
+.chat-composer-input :deep(.el-textarea__inner) {
+  min-height: 110px;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 14px 16px;
+  font-size: 14px;
+  background: transparent;
+}
+.chat-composer-input :deep(.el-textarea__inner):focus { box-shadow: none; }
+.chat-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px 12px 8px;
+  background: #fff;
+}
+.send-btn {
+  border: none;
+  background: #1e90ff;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 34px;
+  font-size: 14px;
+  padding: 0 14px;
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(30, 144, 255, 0.22);
+  transition: all 0.2s ease;
+}
+.send-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, rgba(30, 144, 255, 1) 0%, rgba(0, 212, 255, 1) 100%);
+}
+.send-btn:active:not(:disabled) { transform: translateY(1px); }
+.send-btn span { display: block; margin-left: 0.4em; }
+.send-btn svg { width: 16px; height: 16px; fill: white; }
+.send-btn .send-btn-svg-wrapper { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 999px; background-color: rgba(255, 255, 255, 0.18); margin-right: 0.35em; }
+.send-btn:disabled { cursor: not-allowed; opacity: 0.65; }
+
 .add-friend-search-wrap { margin-bottom: 12px; }
 .add-friend-result { max-height: 260px; overflow: hidden; }
 .add-friend-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }

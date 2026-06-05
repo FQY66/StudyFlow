@@ -197,10 +197,10 @@ const logout = async () => {
             <span>课程发布</span>
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="/teacher/common/upload-test">
+        <!-- <el-menu-item index="/teacher/common/upload-test">
           <el-icon><Files /></el-icon>
           <span>测试栏</span>
-        </el-menu-item>
+        </el-menu-item> -->
         <el-menu-item index="/teacher/sf/ai">
           <el-icon>
             <AiRobotIcon />

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowDown, User, Camera, SwitchButton, ArrowRight, Search } from '@element-plus/icons-vue'
@@ -45,6 +45,16 @@ const messagePreviewList = ref<FriendPreview[]>([])
 const messagePreviewError = ref('')
 let previewPollingTimer: number | undefined
 
+// 加载失败的头像自动回退
+const brokenAvatars = reactive(new Set<string>())
+const defaultMsgAvatar = 'https://i.pravatar.cc/80?img=11'
+const getMsgSafeSrc = (src: string) => (src && !brokenAvatars.has(src) ? src : defaultMsgAvatar)
+const onMsgAvatarError = (src: string) => { if (src) brokenAvatars.add(src) }
+const fmtMsgAvatar = (avatar?: string) => {
+  if (!avatar) return defaultMsgAvatar
+  return formatAvatar(avatar)
+}
+
 interface ApiResult<T> {
   code: number
   msg?: string
@@ -56,6 +66,8 @@ interface SignedProject {
   theme?: string
   category?: string
   status?: string
+  signupStatus?: string
+  signupTime?: string
   createTime?: string
 }
 
@@ -158,6 +170,15 @@ const userRole = computed(() => {
 const normalizePreview = (value?: string) => {
   const text = (value || '').trim()
   if (!text) return '暂无新消息'
+  // 检测分享消息 JSON，显示友好预览
+  try {
+    const parsed = JSON.parse(text)
+    if (parsed?.type === 'project_share' && parsed?.title) {
+      return `[分享] ${parsed.title}`
+    }
+  } catch {
+    // 非 JSON，正常截断
+  }
   return text.length > 28 ? `${text.slice(0, 28)}...` : text
 }
 
@@ -376,7 +397,7 @@ const saveAvatar = (avatar: string) => {
   localStorage.setItem('avatarUpdatedAt', String(Date.now()))
 }
 
-const onAvatarSelected = (event: Event) => {
+const onAvatarSelected = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (!file) return
@@ -387,14 +408,20 @@ const onAvatarSelected = (event: Event) => {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = () => {
-    const avatar = String(reader.result || '')
-    saveAvatar(avatar)
-    ElMessage.success('头像已更新')
-    target.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await request.post('/common/file/upload', formData)
+    if (data?.code === 1 && data?.data?.url) {
+      saveAvatar(data.data.url)
+      ElMessage.success('头像已更新')
+    } else {
+      ElMessage.error(data?.msg || '头像上传失败')
+    }
+  } catch {
+    ElMessage.error('头像上传失败')
   }
-  reader.readAsDataURL(file)
+  target.value = ''
 }
 
 const handleAvatarVisibleChange = (visible: boolean) => {
@@ -525,7 +552,7 @@ const logout = async () => {
                       >
                         <div class="message-panel-preview-head">
                           <div class="message-panel-preview-title">
-                            <el-avatar :size="42" :src="item.avatar || ''" />
+                            <el-avatar :size="42" :src="getMsgSafeSrc(fmtMsgAvatar(item.avatar))" @error="onMsgAvatarError(fmtMsgAvatar(item.avatar))" />
                             <div class="message-panel-preview-user">
                               <div class="message-panel-preview-name">{{ item.name || item.username || '未知用户' }}</div>
                               <div class="message-panel-preview-meta">
@@ -545,7 +572,7 @@ const logout = async () => {
                     <div v-else-if="latestPreview" class="message-panel-preview" @click="openMessageWindowPage">
                       <div class="message-panel-preview-head">
                         <div class="message-panel-preview-title">
-                          <el-avatar :size="42" :src="latestPreview.avatar || ''" />
+                          <el-avatar :size="42" :src="getMsgSafeSrc(fmtMsgAvatar(latestPreview.avatar))" @error="onMsgAvatarError(fmtMsgAvatar(latestPreview.avatar))" />
                           <div class="message-panel-preview-user">
                             <div class="message-panel-preview-name">{{ latestPreview.name || latestPreview.username || '未知用户' }}</div>
                             <div class="message-panel-preview-meta">
@@ -603,7 +630,7 @@ const logout = async () => {
                 </div>
 
                 <el-dropdown-menu class="avatar-dropdown">
-                  <el-dropdown-item class="avatar-menu-item" @click="openProfile">
+                  <el-dropdown-item class="avatar-menu-item" @click="router.push('/student/profile')">
                     <el-icon><User /></el-icon>
                     <span>个人中心</span>
                     <el-icon class="menu-item-arrow"><ArrowRight /></el-icon>
@@ -659,7 +686,7 @@ const logout = async () => {
               <div class="signup-item-title">{{ item.theme || '未命名项目' }}</div>
               <div class="signup-item-meta">
                 <span>{{ item.category || '未分类' }}</span>
-                <span>{{ item.status || '未知状态' }}</span>
+                <span :class="item.signupStatus === '已通过' ? 'status-approved' : 'status-pending'">{{ item.signupStatus || '待审核' }}</span>
               </div>
             </div>
           </div>
@@ -1360,6 +1387,8 @@ const logout = async () => {
   font-size: 12px;
   color: #64748b;
 }
+.status-approved { color: #67c23a; font-weight: 600; }
+.status-pending { color: #e6a23c; font-weight: 600; }
 
 @media (max-width: 1200px) {
   .topbar-inner {

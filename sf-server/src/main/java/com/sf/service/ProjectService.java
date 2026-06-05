@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 public interface ProjectService {
     PageResult pageQuery(ProjectPageQueryDTO projectPageQueryDTO);
 
+    /** 管理端分页查询：待审核项目+待审核报名用户排前面 */
+    PageResult pageQueryManage(ProjectPageQueryDTO projectPageQueryDTO);
+
     java.util.List<String> getCategories();
 
     ProjectStudyVO getById(Integer id);

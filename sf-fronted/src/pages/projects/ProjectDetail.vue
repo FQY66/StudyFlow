@@ -41,12 +41,26 @@ interface ProjectShareCard {
   link: string
 }
 
+interface FriendItem {
+  userId: number
+  name?: string
+  username?: string
+  email?: string
+  avatar?: string
+  online?: boolean
+}
+
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const joining = ref(false)
 const project = ref<ProjectStudyVO | null>(null)
 const sharing = ref(false)
+
+const shareDialogVisible = ref(false)
+const shareFriendList = ref<FriendItem[]>([])
+const shareFriendLoading = ref(false)
+const shareFriendKeyword = ref('')
 
 const id = computed(() => String(route.params.id ?? ''))
 const currentUserId = computed(() => {
@@ -61,19 +75,36 @@ const currentUserId = computed(() => {
 })
 const currentUserRole = computed(() => sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || '')
 
-const hasSignedUp = computed(() => {
-  if (!project.value?.projectSignupList?.length || !currentUserId.value) return false
-  return project.value.projectSignupList.some((user) => Number(user.userId || user.id) === currentUserId.value)
+const currentUserSignup = computed(() => {
+  if (!project.value?.projectSignupList?.length || !currentUserId.value) return null
+  return project.value.projectSignupList.find((user) => Number(user.userId || user.id) === currentUserId.value) || null
+})
+
+const isSignupApproved = computed(() => {
+  return currentUserSignup.value?.status === '已通过'
+})
+
+const isSignupPending = computed(() => {
+  return currentUserSignup.value?.status === '待审核'
 })
 
 const joinButtonText = computed(() => {
-  if (hasSignedUp.value) return '已报名'
+  if (isSignupApproved.value) return '已报名'
+  if (isSignupPending.value) return '待审核'
   if (project.value?.status && project.value.status !== '已发布') return '暂不可报名'
   return '我要报名'
 })
 
 const joinButtonDisabled = computed(() => {
-  return joining.value || hasSignedUp.value || project.value?.status !== '已发布'
+  return joining.value || isSignupApproved.value || isSignupPending.value || project.value?.status !== '已发布'
+})
+
+const filteredShareFriends = computed(() => {
+  const kw = shareFriendKeyword.value.trim().toLowerCase()
+  if (!kw) return shareFriendList.value
+  return shareFriendList.value.filter(
+    (f) => (f.name || '').toLowerCase().includes(kw) || (f.username || '').toLowerCase().includes(kw)
+  )
 })
 
 const resolveFileUrl = (path?: string) => {
@@ -88,6 +119,14 @@ const toAbsoluteFileUrl = (src: string) => {
   if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return src
   const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
   return src.startsWith('/') ? `${base}${src}` : `${base}/${src}`
+}
+
+const formatFriendAvatar = (avatar?: string, idx = 0) => {
+  const raw = avatar?.trim()
+  if (!raw) return `https://i.pravatar.cc/80?img=${(idx % 60) + 1}`
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  return `${base}/${raw.replace(/^\/+/, '')}`
 }
 
 const renderRichText = (html?: string, fallback = '暂无内容') => {
@@ -137,6 +176,7 @@ const sendShareToFriend = async (friendId: number) => {
       return
     }
     ElMessage.success('已分享给好友')
+    shareDialogVisible.value = false
   } catch {
     ElMessage.error('分享失败，请稍后再试')
   } finally {
@@ -144,8 +184,39 @@ const sendShareToFriend = async (friendId: number) => {
   }
 }
 
+const loadShareFriendList = async () => {
+  shareFriendLoading.value = true
+  try {
+    const { data } = await request.get('/chat/friends')
+    if (data?.code === 1) {
+      shareFriendList.value = (data.data || []).map((u: any) => ({
+        userId: Number(u.userId),
+        name: u.name || u.username || `用户${u.userId}`,
+        username: u.username || '',
+        email: u.email || '',
+        avatar: u.avatar || '',
+        online: !!u.online
+      }))
+    }
+  } catch {
+    ElMessage.error('加载好友列表失败')
+  } finally {
+    shareFriendLoading.value = false
+  }
+}
+
 const shareProjectToFriend = () => {
-  ElMessage.info('请先在聊天页选择好友后再分享项目')
+  if (!currentUserId.value) {
+    ElMessage.warning('请先登录后再分享')
+    return
+  }
+  shareFriendKeyword.value = ''
+  loadShareFriendList()
+  shareDialogVisible.value = true
+}
+
+const handleShareToFriend = (friendId: number) => {
+  sendShareToFriend(friendId)
 }
 
 const increaseClick = async () => {
@@ -303,6 +374,39 @@ watch(
         <el-empty v-else description="暂无项目详情" />
       </el-card>
     </div>
+
+    <!-- 分享好友选择弹窗 -->
+    <el-dialog v-model="shareDialogVisible" title="分享给好友" width="460px" :close-on-click-modal="true" class="share-dialog">
+      <div class="share-dialog-search">
+        <el-input v-model="shareFriendKeyword" placeholder="搜索好友" clearable class="share-search-input" />
+      </div>
+
+      <div v-loading="shareFriendLoading" class="share-friend-list">
+        <el-empty v-if="!shareFriendLoading && filteredShareFriends.length === 0" description="暂无好友，请先添加好友" />
+        <div v-else class="share-friend-items">
+          <div
+            v-for="(friend, idx) in filteredShareFriends"
+            :key="friend.userId"
+            class="share-friend-item"
+          >
+            <div class="share-friend-info">
+              <el-avatar :size="44" :src="formatFriendAvatar(friend.avatar, idx)" class="share-friend-avatar" />
+              <div class="share-friend-text">
+                <div class="share-friend-name">
+                  {{ friend.name || friend.username || '用户' + friend.userId }}
+                  <span v-if="friend.online" class="share-friend-online-dot" title="在线"></span>
+                </div>
+                <div class="share-friend-email">{{ friend.email || '@' + (friend.username || friend.userId) }}</div>
+              </div>
+            </div>
+            <button class="share-purple-btn" :disabled="sharing" @click="handleShareToFriend(friend.userId)">
+              <span v-if="sharing">分享中</span>
+              <span v-else>分享</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -517,6 +621,167 @@ watch(
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ===== 分享好友选择弹窗样式 ===== */
+.share-dialog :deep(.el-dialog) {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.share-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px 0;
+  margin: 0;
+}
+
+.share-dialog :deep(.el-dialog__title) {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e1e2f;
+}
+
+.share-dialog :deep(.el-dialog__body) {
+  padding: 16px 24px 24px;
+}
+
+.share-dialog-search {
+  margin-bottom: 18px;
+}
+
+.share-search-input :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  background: #f7f8fc;
+  border: 1px solid #e8ecf4;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.share-search-input :deep(.el-input__wrapper:hover) {
+  border-color: #c5cde4;
+  background: #f3f5fb;
+}
+
+.share-search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: #8b9cf7;
+  box-shadow: 0 0 0 3px rgba(107, 131, 247, 0.12);
+  background: #fff;
+}
+
+.share-friend-list {
+  min-height: 120px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.share-friend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-friend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #eef1f8;
+  border-radius: 14px;
+  background: #fafbfd;
+  transition: all 0.2s ease;
+}
+
+.share-friend-item:hover {
+  background: #f4f6ff;
+  border-color: #d4daf8;
+  box-shadow: 0 4px 12px rgba(107, 131, 247, 0.08);
+  transform: translateY(-1px);
+}
+
+.share-friend-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.share-friend-avatar {
+  flex-shrink: 0;
+}
+
+.share-friend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.share-friend-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e1e2f;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-friend-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #52c97d;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(82, 201, 125, 0.2);
+}
+
+.share-friend-email {
+  font-size: 12px;
+  color: #9095a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 紫色渐变分享按钮 */
+.share-purple-btn {
+  flex-shrink: 0;
+  min-width: 68px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #8b9cf7 0%, #6b83f7 50%, #5b6ef5 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(107, 131, 247, 0.3);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-purple-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #9aabf8 0%, #7b93f8 50%, #6b7ef6 100%);
+  box-shadow: 0 6px 16px rgba(107, 131, 247, 0.4);
+  transform: translateY(-1px);
+}
+
+.share-purple-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(107, 131, 247, 0.25);
+}
+
+.share-purple-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 好友列表空状态优化 */
+.share-friend-list :deep(.el-empty__description) {
+  color: #9095a8;
+  font-size: 13px;
 }
 
 .signup-user-info {

@@ -99,7 +99,10 @@ const reset = async () => {
 }
 
 const openDetail = (id: number) => {
-  const prefix = router.currentRoute.value.path.startsWith('/student') ? '/student' : ''
+  const path = router.currentRoute.value.path
+  let prefix = ''
+  if (path.startsWith('/student')) prefix = '/student'
+  else if (path.startsWith('/teacher')) prefix = '/teacher'
   router.push(`${prefix}/projects/courses/${id}`)
 }
 

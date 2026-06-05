@@ -33,7 +33,7 @@ const quickPrompts = ref([''])
 const messages = ref<ChatItem[]>([])
 const isSending = ref(false)
 const isStreaming = ref(false)
-const ragApiBaseUrl = import.meta.env.VITE_RAG_API_BASE_URL || 'http://127.0.0.1:8000'
+const ragApiBaseUrl = import.meta.env.VITE_RAG_API_BASE_URL || 'http://127.0.0.1:18001'
 let activeAbortController: AbortController | null = null
 
 const userName = computed(() => {
@@ -277,7 +277,7 @@ onBeforeUnmount(() => {
                 type="textarea"
                 :rows="3"
                 resize="none"
-                placeholder="给 DeepSeek 发送消息"
+                placeholder="请输入你的问题"
                 @keydown.enter.exact.prevent="sendMessage"
               />
 

@@ -1,6 +1,8 @@
 sf:
   upload:
     local-path: C:\D\Code\IDEA_project\StudyFlow\sf-server\src\main\resources\static\uploads
+  rag:
+    api-url: http://127.0.0.1:18001
 #    url-prefix: /static/uploads
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

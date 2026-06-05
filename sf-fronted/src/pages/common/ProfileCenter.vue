@@ -37,6 +37,8 @@ const participatedProjects = ref<ProjectItem[]>([])
 
 const role = computed(() => sessionStorage.getItem('userRole') || sessionStorage.getItem('role') || localStorage.getItem('userRole') || localStorage.getItem('role') || '')
 const isTeacher = computed(() => role.value === '老师')
+const isStudent = computed(() => role.value === '学生')
+const showProjects = computed(() => isTeacher.value || isStudent.value)
 
 const profile = reactive<UserProfile>({
   id: Number(sessionStorage.getItem('id') || localStorage.getItem('id') || 0),
@@ -81,16 +83,17 @@ const handleAvatarUpload = async (file: File) => {
 
   avatarUploading.value = true
   try {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = () => reject(new Error('read failed'))
-      reader.readAsDataURL(file)
-    })
-    editForm.avatar = base64
-    ElMessage.success('头像已选择，保存后生效')
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await request.post('/common/file/upload', formData)
+    if (data?.code === 1 && data?.data?.url) {
+      editForm.avatar = data.data.url
+      ElMessage.success('头像上传成功，保存后生效')
+    } else {
+      ElMessage.error(data?.msg || '头像上传失败')
+    }
   } catch {
-    ElMessage.error('头像读取失败')
+    ElMessage.error('头像上传失败')
   } finally {
     avatarUploading.value = false
   }
@@ -98,7 +101,7 @@ const handleAvatarUpload = async (file: File) => {
 }
 
 const loadTeacherProjects = async () => {
-  if (!isTeacher.value || !profile.id) {
+  if (!showProjects.value || !profile.id) {
     participatedProjects.value = []
     return
   }
@@ -168,8 +171,13 @@ const saveProfile = async () => {
 
 const goToProject = (id: number) => {
   if (!id) return
-  const prefix = route.path.startsWith('/teacher') ? '/teacher' : ''
-  router.push(`${prefix}/projects/detail/${id}`)
+  if (route.path.startsWith('/teacher')) {
+    router.push(`/teacher/projects/detail/${id}`)
+  } else if (route.path.startsWith('/student')) {
+    router.push(`/student/projects/detail/${id}`)
+  } else {
+    router.push(`/projects/detail/${id}`)
+  }
 }
 
 watch(
@@ -219,7 +227,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <section v-if="isTeacher" class="projects-section">
+      <section v-if="showProjects" class="projects-section">
         <div class="section-header">
           <h3>参与的项目</h3>
           <span class="section-tip">{{ participatedProjects.length }} 个项目</span>

@@ -35,11 +35,27 @@ const items = ref<NewsItem[]>([])
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const slides = [
-  'https://picsum.photos/seed/research-news-1/1200/360',
-  'https://picsum.photos/seed/research-news-2/1200/360',
-  'https://picsum.photos/seed/research-news-3/1200/360'
-]
+interface SlideItem {
+  url: string
+  label: string
+  gradient: string
+  loaded: boolean
+  errored: boolean
+}
+
+const slides = ref<SlideItem[]>([
+  { url: '/static/news/news1.jpg', label: '最新研学动态', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', loaded: false, errored: false },
+  { url: '/static/news/news2.jpg', label: '政策深度解读', gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', loaded: false, errored: false },
+  { url: '/static/news/news3.jpg', label: '优秀案例分享', gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', loaded: false, errored: false }
+])
+
+const onImgError = (slide: SlideItem) => {
+  slide.errored = true
+}
+
+const onImgLoad = (slide: SlideItem) => {
+  slide.loaded = true
+}
 
 const categoryOptions = ['研学动态', '政策解读', '案例分享', '活动通知', '专家观点']
 
@@ -109,8 +125,21 @@ onMounted(() => {
   <div class="projects-info">
     <section class="banner">
       <el-carousel height="360px" indicator-position="outside" arrow="always">
-        <el-carousel-item v-for="(src, index) in slides" :key="index">
-          <img :src="src" class="carousel-img" alt="研学资讯广告" />
+        <el-carousel-item v-for="(slide, index) in slides" :key="index">
+          <div class="carousel-inner" :style="{ background: slide.errored || !slide.loaded ? slide.gradient : undefined }">
+            <img
+              v-show="!slide.errored"
+              :src="slide.url"
+              class="carousel-img"
+              alt="研学资讯广告"
+              @load="onImgLoad(slide)"
+              @error="onImgError(slide)"
+            />
+            <div v-if="slide.errored || !slide.loaded" class="carousel-placeholder">
+              <span class="placeholder-icon">📚</span>
+              <span class="placeholder-text">{{ slide.label }}</span>
+            </div>
+          </div>
         </el-carousel-item>
       </el-carousel>
     </section>
@@ -144,7 +173,11 @@ onMounted(() => {
 <style scoped>
 .projects-info { padding: 16px 12px 12px; }
 .banner { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.04); }
-.carousel-img { width: 100%; height: 100%; object-fit: cover; }
+.carousel-inner { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.carousel-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.carousel-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #fff; }
+.placeholder-icon { font-size: 48px; line-height: 1; }
+.placeholder-text { font-size: 22px; font-weight: 600; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(0,0,0,.15); }
 .news-toolbar { display: flex; gap: 12px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
 .toolbar-input { width: 280px; }
 .toolbar-select { width: 180px; }

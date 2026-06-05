@@ -100,6 +100,10 @@ const filteredTableData = computed(() => {
     .sort((a, b) => {
       const pendingDiff = (b.pendingSignupCount || 0) - (a.pendingSignupCount || 0)
       if (pendingDiff !== 0) return pendingDiff
+      const clickDiff = (b.clickCount || 0) - (a.clickCount || 0)
+      if (clickDiff !== 0) return clickDiff
+      const likeDiff = (b.likeCount || 0) - (a.likeCount || 0)
+      if (likeDiff !== 0) return likeDiff
       return new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime()
     })
 })
@@ -141,7 +145,7 @@ const fetchCategoryOptions = async () => {
 const fetchProjects = async () => {
   loading.value = true
   try {
-    const { data } = await request.get<ApiResult<PageResult<ProjectApiRow>>>('/project/page', {
+    const { data } = await request.get<ApiResult<PageResult<ProjectApiRow>>>('/project/page/manage', {
       params: {
         theme: searchForm.theme || undefined,
         category: searchForm.category || undefined,

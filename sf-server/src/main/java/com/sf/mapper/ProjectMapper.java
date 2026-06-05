@@ -16,6 +16,9 @@ public interface ProjectMapper {
 
     Page<ProjectStudyVO> pageQuery(ProjectPageQueryDTO projectPageQueryDTO);
 
+    /** 管理端分页查询：待审核项目+待审核报名用户排前面 */
+    Page<ProjectStudyVO> pageQueryManage(ProjectPageQueryDTO projectPageQueryDTO);
+
     List<ProjectSignupUserVO> getSignupByProjectId(Integer projectId);
 
     List<String> getCategories();

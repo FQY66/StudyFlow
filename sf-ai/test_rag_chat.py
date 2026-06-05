@@ -8,7 +8,10 @@ import requests
 def main():
     parser = argparse.ArgumentParser(description="Test StudyFlow RAG chat API and save UTF-8 result")
     parser.add_argument("--url", default="http://127.0.0.1:18001/rag/chat", help="RAG chat endpoint")
-    parser.add_argument("--query", default="【民生周报】第五期说了什么")
+    parser.add_argument(
+        "--query",
+        default="国家主席习近平在北京人民大会堂为塞尔维亚总统武契奇做了什么",
+    )
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--out", default="rag_result.json", help="save response as UTF-8 JSON")
     args = parser.parse_args()

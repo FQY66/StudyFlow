@@ -1,3 +1,4 @@
+import hashlib
 import re
 from pathlib import Path
 from typing import Dict, Generator, List
@@ -120,6 +121,65 @@ class RagService:
         text = re.sub(r"\n{3,}", "\n\n", text)
 
         return text.strip()
+
+    def _chunk_text(self, text: str, chunk_size: int = 700, overlap: int = 120) -> List[str]:
+        text = " ".join((text or "").split())
+        if len(text) <= chunk_size:
+            return [text] if text else []
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = min(start + chunk_size, len(text))
+            chunks.append(text[start:end])
+            if end == len(text):
+                break
+            start = max(0, end - overlap)
+        return chunks
+
+    def ingest_document(self, title: str, content: str, source: str, url: str, publish_time: str) -> Dict:
+        """摄入单篇文档到知识库"""
+        if not content or not content.strip():
+            return {"status": "skipped", "reason": "empty content"}
+
+        chunks = self._chunk_text(content)
+        ids, documents, metadatas, embeddings = [], [], [], []
+
+        for i, chunk in enumerate(chunks):
+            doc_id = hashlib.md5(f"{title}:{source}:{i}".encode("utf-8")).hexdigest()
+            ids.append(doc_id)
+            documents.append(chunk)
+            metadatas.append({
+                "title": title,
+                "source": source,
+                "url": url,
+                "publish_time": publish_time,
+            })
+            embeddings.append(self.embed(chunk))
+
+        # 先删除旧版本（同标题+同来源），再插入新版本
+        self._delete_by_title_source(title, source)
+
+        if ids:
+            self.collection.add(ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings)
+
+        return {"status": "ok", "chunks": len(ids)}
+
+    def _delete_by_title_source(self, title: str, source: str):
+        """按标题+来源删除文档"""
+        try:
+            old = self.collection.get(where={"$and": [
+                {"title": title},
+                {"source": source}
+            ]})
+            if old and old.get("ids"):
+                self.collection.delete(ids=list(old["ids"]))
+        except Exception:
+            pass
+
+    def delete_document(self, title: str, source: str) -> Dict:
+        """从知识库中删除指定文档"""
+        self._delete_by_title_source(title, source)
+        return {"status": "ok", "deleted": True}
 
     def chat(self, query: str, top_k: int = 5) -> Dict:
         hits = self.retrieve(query, top_k=top_k)
